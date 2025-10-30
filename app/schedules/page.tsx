@@ -2,13 +2,21 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { getSchedulesByDateRange } from "@/lib/api/schedules";
+import { formatDate, addDays, getToday } from "@/lib/utils/dateUtils";
 
 /**
  * スケジュール管理ページ（Server Component）
  * データ取得とタイムラインの表示を担当
  */
 export default async function SchedulesPage() {
-  // TODO: タスク6でデータ取得ロジックを実装
+  // デフォルトで今日から7日間のスケジュールを取得
+  const today = getToday();
+  const startDate = formatDate(today);
+  const endDate = formatDate(addDays(today, 6));
+
+  // スケジュールデータを取得
+  const schedules = await getSchedulesByDateRange(startDate, endDate);
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,13 +42,41 @@ export default async function SchedulesPage() {
       <main className="container mx-auto px-4 py-6">
         <Suspense fallback={<SchedulesLoadingSkeleton />}>
           {/* TODO: タスク7でTimelineCalendarコンポーネントを追加 */}
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
-              スケジュール管理機能は実装中です。
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              タスク6以降で機能を実装していきます。
-            </p>
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              表示期間: {startDate} 〜 {endDate}
+            </div>
+            {schedules.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-muted-foreground">
+                  {schedules.length}件のスケジュールが見つかりました
+                </p>
+                <div className="grid gap-2">
+                  {schedules.map((schedule) => (
+                    <div
+                      key={schedule.id}
+                      className="p-4 border rounded-lg bg-card"
+                    >
+                      <div className="font-semibold">{schedule.title}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {schedule.eventDate} {schedule.startTime} -{" "}
+                        {schedule.endTime}
+                      </div>
+                      <div className="text-sm">{schedule.destinationAddress}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">
+                  この期間にスケジュールはありません
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  スケジュールを登録してください
+                </p>
+              </div>
+            )}
           </div>
         </Suspense>
       </main>
