@@ -25,12 +25,15 @@
   - 必要なインデックスを作成する（event_date, driver_id, client_id）
   - _Requirements: 6.1, 8.1, 8.2, 8.3_
 
-- [-] 3. TypeScript型定義とSupabaseクライアントの実装
+- [x] 3. TypeScript型定義とSupabaseクライアントの実装
+
+
 
   - `types/Schedule.ts`、`types/Client.ts`、`types/Driver.ts`、`types/PartnerCompany.ts`を作成する
   - `lib/supabase/client.ts`（ブラウザ用Supabaseクライアント）を実装する
   - `lib/supabase/server.ts`（サーバー用Supabaseクライアント）を実装する
   - _Requirements: 6.1, 7.3_
+
 
 - [ ] 4. ユーティリティ関数の実装
   - `lib/utils/dateUtils.ts`に日付フォーマット、日付範囲生成関数を実装する
