@@ -77,7 +77,38 @@ CREATE POLICY "Enable insert for authenticated users" ON schedules_kiro_nextjs
 
 ## サンプルデータの投入
 
-開発・テスト用のサンプルデータを投入する場合は、`sample_data.sql`を実行してください（タスク14で作成予定）。
+開発・テスト用のサンプルデータを投入する場合は、以下の手順で実行してください：
+
+### 手順
+
+1. Supabase Dashboard > SQL Editorを開く
+
+2. `sample_data.sql`の内容をコピーして実行
+
+3. クライアントと協力会社のデータが投入されます
+
+4. ドライバーとスケジュールのデータは、コメントアウトされているINSERT文のコメントを外して実行してください
+   - 協力会社のドライバーを追加する場合は、協力会社のIDを確認してから実行
+   - スケジュールを追加する場合は、クライアントとドライバーのIDを確認してから実行
+
+### IDの確認方法
+
+```sql
+-- クライアントIDの確認
+SELECT id, name FROM clients_kiro_nextjs;
+
+-- ドライバーIDの確認
+SELECT id, name FROM drivers_kiro_nextjs;
+
+-- 協力会社IDの確認
+SELECT id, name FROM partner_companies_kiro_nextjs;
+```
+
+### 注意事項
+
+- サンプルデータは開発・テスト環境でのみ使用してください
+- 本番環境では実際のデータを使用してください
+- スケジュールデータは`CURRENT_DATE`を基準に作成されるため、実行日によって日付が変わります
 
 ## トラブルシューティング
 
