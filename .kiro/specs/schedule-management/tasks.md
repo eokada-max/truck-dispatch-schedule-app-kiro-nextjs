@@ -85,7 +85,9 @@
 
 
 - [ ] 7. TimelineCalendarコンポーネントの実装
-- [-] 7.1 TimelineCalendarの基本構造を実装する
+- [x] 7.1 TimelineCalendarの基本構造を実装する
+
+
 
   - `components/schedules/TimelineCalendar.tsx`（Client Component）を作成する
   - 日付列と時間軸のグリッドレイアウトを実装する
@@ -105,6 +107,7 @@
 - [ ] 8. DateNavigationコンポーネントの実装
   - `components/schedules/DateNavigation.tsx`（Client Component）を作成する
   - 前へ、次へ、今日ボタンを実装する
+
   - 現在の年月表示を実装する
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
