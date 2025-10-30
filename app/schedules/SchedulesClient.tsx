@@ -11,7 +11,10 @@ import { DateNavigation } from "@/components/schedules/DateNavigation";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { addDays, getToday, formatDate } from "@/lib/utils/dateUtils";
-import { createSchedule, updateSchedule, deleteSchedule } from "@/lib/api/schedules";
+// Client側ではブラウザ用のAPI関数を使用
+import { createClient } from "@/lib/supabase/client";
+import type { CreateScheduleInput, UpdateScheduleInput } from "@/types/Schedule";
+import { toScheduleInsert, toScheduleUpdate } from "@/lib/utils/typeConverters";
 import { getErrorMessage } from "@/lib/utils/errorHandler";
 import type { ScheduleFormData } from "@/types/Schedule";
 
@@ -77,13 +80,26 @@ export function SchedulesClient({
   // フォーム送信ハンドラー
   const handleFormSubmit = async (data: ScheduleFormData) => {
     try {
+      const supabase = createClient();
+      
       if (selectedSchedule) {
         // 更新
-        await updateSchedule(selectedSchedule.id, data);
+        const updateData = toScheduleUpdate(data) as any;
+        const { error } = await supabase
+          .from("schedules_kiro_nextjs")
+          .update(updateData)
+          .eq("id", selectedSchedule.id);
+        
+        if (error) throw error;
         toast.success("スケジュールを更新しました");
       } else {
         // 作成
-        await createSchedule(data);
+        const insertData = toScheduleInsert(data);
+        const { error } = await supabase
+          .from("schedules_kiro_nextjs")
+          .insert([insertData] as any);
+        
+        if (error) throw error;
         toast.success("スケジュールを登録しました");
       }
       router.refresh();
@@ -97,7 +113,13 @@ export function SchedulesClient({
   // 削除ハンドラー
   const handleDelete = async (id: string) => {
     try {
-      await deleteSchedule(id);
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("schedules_kiro_nextjs")
+        .delete()
+        .eq("id", id);
+      
+      if (error) throw error;
       toast.success("スケジュールを削除しました");
       router.refresh();
     } catch (error) {
