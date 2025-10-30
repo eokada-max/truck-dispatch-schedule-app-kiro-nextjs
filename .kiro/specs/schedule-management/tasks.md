@@ -1,6 +1,8 @@
 # Implementation Plan
 
-- [ ] 1. プロジェクトのセットアップと初期設定
+- [x] 1. プロジェクトのセットアップと初期設定
+
+
 
 
 
@@ -12,7 +14,8 @@
   - Shadcn/UIをインストールし、必要な基本コンポーネント（Button、Dialog、Input、Select）を追加する
   - _Requirements: 7.1, 7.2_
 
-- [ ] 2. データベーススキーマの作成
+- [-] 2. データベーススキーマの作成
+
   - Supabaseで`clients_kiro_nextjs`テーブルを作成する（id, name, contact_info）
   - Supabaseで`partner_companies_kiro_nextjs`テーブルを作成する（id, name, contact_info）
   - Supabaseで`drivers_kiro_nextjs`テーブルを作成する（id, name, contact_info, is_in_house, partner_company_id）

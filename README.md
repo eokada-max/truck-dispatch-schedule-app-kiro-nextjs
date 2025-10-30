@@ -40,68 +40,30 @@ cd <repository-name>
 npm install
 ```
 
-3. 環境変数を設定
+3. Supabaseプロジェクトの作成とデータベースセットアップ
 
-`.env.example`を`.env.local`にコピーして、Supabaseの認証情報を設定します。
+- [Supabase](https://supabase.com)でプロジェクトを作成
+- Supabase Dashboard > SQL Editorを開く
+- `supabase/schema.sql`の内容をコピーして実行
+- テーブルが正常に作成されたことを確認
+
+詳細な手順は `supabase/README.md` を参照してください。
+
+4. 環境変数を設定
+
+`.env.local.template`を`.env.local`にコピーして、Supabaseの認証情報を設定します。
 
 ```bash
-cp .env.example .env.local
+cp .env.local.template .env.local
 ```
+
+接続情報は Supabase Dashboard > Settings > API から取得できます。
 
 `.env.local`を編集：
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-4. Supabaseでデータベーステーブルを作成
-
-Supabase Dashboardで以下のSQLを実行してください（詳細は`spec/03_data_model.md`を参照）：
-
-```sql
--- clients_kiro_nextjs テーブル
-CREATE TABLE clients_kiro_nextjs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  contact_info TEXT
-);
-
--- partner_companies_kiro_nextjs テーブル
-CREATE TABLE partner_companies_kiro_nextjs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  contact_info TEXT
-);
-
--- drivers_kiro_nextjs テーブル
-CREATE TABLE drivers_kiro_nextjs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  contact_info TEXT,
-  is_in_house BOOLEAN NOT NULL DEFAULT true,
-  partner_company_id UUID REFERENCES partner_companies_kiro_nextjs(id)
-);
-
--- schedules_kiro_nextjs テーブル
-CREATE TABLE schedules_kiro_nextjs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_date DATE NOT NULL,
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  title TEXT NOT NULL,
-  destination_address TEXT NOT NULL,
-  content TEXT,
-  client_id UUID REFERENCES clients_kiro_nextjs(id),
-  driver_id UUID REFERENCES drivers_kiro_nextjs(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- インデックス
-CREATE INDEX idx_schedules_kiro_nextjs_event_date ON schedules_kiro_nextjs(event_date);
-CREATE INDEX idx_schedules_kiro_nextjs_driver_id ON schedules_kiro_nextjs(driver_id);
-CREATE INDEX idx_schedules_kiro_nextjs_client_id ON schedules_kiro_nextjs(client_id);
 ```
 
 5. 開発サーバーを起動
