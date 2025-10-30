@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import type { Schedule } from "@/types/Schedule";
 import type { Client } from "@/types/Client";
 import type { Driver } from "@/types/Driver";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { addDays, getToday, formatDate } from "@/lib/utils/dateUtils";
 import { createSchedule, updateSchedule, deleteSchedule } from "@/lib/api/schedules";
+import { getErrorMessage } from "@/lib/utils/errorHandler";
 import type { ScheduleFormData } from "@/types/Schedule";
 
 interface SchedulesClientProps {
@@ -72,13 +74,16 @@ export function SchedulesClient({
       if (selectedSchedule) {
         // 更新
         await updateSchedule(selectedSchedule.id, data);
+        toast.success("スケジュールを更新しました");
       } else {
         // 作成
         await createSchedule(data);
+        toast.success("スケジュールを登録しました");
       }
       router.refresh();
     } catch (error) {
-      console.error("Schedule operation failed:", error);
+      const message = getErrorMessage(error);
+      toast.error(`操作に失敗しました: ${message}`);
       throw error;
     }
   };
@@ -87,9 +92,11 @@ export function SchedulesClient({
   const handleDelete = async (id: string) => {
     try {
       await deleteSchedule(id);
+      toast.success("スケジュールを削除しました");
       router.refresh();
     } catch (error) {
-      console.error("Delete failed:", error);
+      const message = getErrorMessage(error);
+      toast.error(`削除に失敗しました: ${message}`);
       throw error;
     }
   };

@@ -130,6 +130,7 @@ export function ScheduleForm({
       });
       setErrors({});
     } catch (error) {
+      // エラーは親コンポーネントで処理される
       console.error("Form submission error:", error);
     } finally {
       setIsSubmitting(false);
@@ -146,6 +147,7 @@ export function ScheduleForm({
         await onDelete(schedule.id);
         onOpenChange(false);
       } catch (error) {
+        // エラーは親コンポーネントで処理される
         console.error("Delete error:", error);
       } finally {
         setIsSubmitting(false);
