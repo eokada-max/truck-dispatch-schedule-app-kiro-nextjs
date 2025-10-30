@@ -63,11 +63,55 @@ export function ScheduleForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // バリデーション関数
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // 必須フィールドのチェック
+    if (!formData.eventDate) {
+      newErrors.eventDate = "日付を入力してください";
+    }
+
+    if (!formData.startTime) {
+      newErrors.startTime = "開始時間を入力してください";
+    }
+
+    if (!formData.endTime) {
+      newErrors.endTime = "終了時間を入力してください";
+    }
+
+    if (!formData.title.trim()) {
+      newErrors.title = "タイトルを入力してください";
+    }
+
+    if (!formData.destinationAddress.trim()) {
+      newErrors.destinationAddress = "届け先住所を入力してください";
+    }
+
+    // 時間の妥当性チェック（開始時間 < 終了時間）
+    if (formData.startTime && formData.endTime) {
+      const [startHour, startMin] = formData.startTime.split(":").map(Number);
+      const [endHour, endMin] = formData.endTime.split(":").map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+
+      if (startMinutes >= endMinutes) {
+        newErrors.endTime = "終了時間は開始時間より後にしてください";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   // フォーム送信ハンドラー
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // TODO: タスク9.2でバリデーションを実装
+    // バリデーション実行
+    if (!validateForm()) {
+      return;
+    }
     
     setIsSubmitting(true);
     try {

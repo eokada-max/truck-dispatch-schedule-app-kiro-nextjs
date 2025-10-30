@@ -82,8 +82,11 @@
   - _Requirements: 8.4_
 
 
+
+
 - [ ] 7. TimelineCalendarコンポーネントの実装
-- [ ] 7.1 TimelineCalendarの基本構造を実装する
+- [-] 7.1 TimelineCalendarの基本構造を実装する
+
   - `components/schedules/TimelineCalendar.tsx`（Client Component）を作成する
   - 日付列と時間軸のグリッドレイアウトを実装する
   - _Requirements: 2.1, 2.2, 2.3_
