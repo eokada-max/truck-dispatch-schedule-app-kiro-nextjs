@@ -66,8 +66,14 @@ export function TimelineCalendar({
   };
 
   return (
-    <div className="w-full overflow-x-auto">
-      <div className="min-w-max border rounded-lg bg-card">
+    <div className="w-full">
+      {/* モバイル用スクロールヒント */}
+      <div className="mb-2 text-xs text-muted-foreground md:hidden">
+        ← 横にスクロールできます →
+      </div>
+      
+      <div className="w-full overflow-x-auto">
+        <div className="min-w-max border rounded-lg bg-card">
         {/* ヘッダー: 日付列 */}
         <div className="flex border-b bg-muted/50">
           {/* 時間軸のヘッダー（空白） */}
@@ -138,6 +144,7 @@ export function TimelineCalendar({
             </div>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );

@@ -22,25 +22,25 @@ export function DateNavigation({
   onToday,
 }: DateNavigationProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 w-full sm:w-auto">
       {/* 今日ボタン */}
-      <Button variant="outline" size="sm" onClick={onToday}>
-        <Calendar className="w-4 h-4 mr-2" />
-        今日
+      <Button variant="outline" size="sm" onClick={onToday} className="flex-shrink-0">
+        <Calendar className="w-4 h-4 sm:mr-2" />
+        <span className="hidden sm:inline">今日</span>
       </Button>
 
       {/* 前へボタン */}
-      <Button variant="outline" size="icon" onClick={onPrevious}>
+      <Button variant="outline" size="icon" onClick={onPrevious} className="flex-shrink-0">
         <ChevronLeft className="w-4 h-4" />
       </Button>
 
       {/* 現在の日付表示 */}
-      <div className="px-4 py-2 text-sm font-medium min-w-[200px] text-center">
+      <div className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium min-w-[140px] sm:min-w-[200px] text-center flex-grow sm:flex-grow-0">
         {formatDateJa(currentDate)}
       </div>
 
       {/* 次へボタン */}
-      <Button variant="outline" size="icon" onClick={onNext}>
+      <Button variant="outline" size="icon" onClick={onNext} className="flex-shrink-0">
         <ChevronRight className="w-4 h-4" />
       </Button>
     </div>
