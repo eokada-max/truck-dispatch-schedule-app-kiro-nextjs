@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Schedule } from "@/types/Schedule";
@@ -8,13 +8,19 @@ import type { Client } from "@/types/Client";
 import type { Driver } from "@/types/Driver";
 import { TimelineCalendar } from "@/components/schedules/TimelineCalendar";
 import { DateNavigation } from "@/components/schedules/DateNavigation";
-import { ScheduleForm } from "@/components/schedules/ScheduleForm";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { addDays, getToday, formatDate } from "@/lib/utils/dateUtils";
 import { createSchedule, updateSchedule, deleteSchedule } from "@/lib/api/schedules";
 import { getErrorMessage } from "@/lib/utils/errorHandler";
 import type { ScheduleFormData } from "@/types/Schedule";
+
+// ScheduleFormを動的インポート（遅延ロード）
+const ScheduleForm = lazy(() =>
+  import("@/components/schedules/ScheduleForm").then((mod) => ({
+    default: mod.ScheduleForm,
+  }))
+);
 
 interface SchedulesClientProps {
   initialSchedules: Schedule[];
@@ -137,16 +143,20 @@ export function SchedulesClient({
         />
       </main>
 
-      {/* スケジュールフォーム */}
-      <ScheduleForm
-        schedule={selectedSchedule}
-        clients={clients}
-        drivers={drivers}
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        onSubmit={handleFormSubmit}
-        onDelete={selectedSchedule ? handleDelete : undefined}
-      />
+      {/* スケジュールフォーム（遅延ロード） */}
+      {isFormOpen && (
+        <Suspense fallback={<div />}>
+          <ScheduleForm
+            schedule={selectedSchedule}
+            clients={clients}
+            drivers={drivers}
+            open={isFormOpen}
+            onOpenChange={setIsFormOpen}
+            onSubmit={handleFormSubmit}
+            onDelete={selectedSchedule ? handleDelete : undefined}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
