@@ -2,8 +2,9 @@
 
 import { useMemo } from "react";
 import type { Schedule } from "@/types/Schedule";
-import { generateDateRange, formatDateShort, getWeekdayJa, isSameDay } from "@/lib/utils/dateUtils";
-import { generateTimeSlots } from "@/lib/utils/timeUtils";
+import { generateDateRange, formatDateShort, getWeekdayJa, isSameDay, formatDate, parseDate } from "@/lib/utils/dateUtils";
+import { generateTimeSlots, timeToMinutes } from "@/lib/utils/timeUtils";
+import { ScheduleCard } from "./ScheduleCard";
 
 interface TimelineCalendarProps {
   schedules: Schedule[];
@@ -30,6 +31,39 @@ export function TimelineCalendar({
 
   // 時間軸を生成（9:00-24:00、1時間刻み）
   const timeSlots = useMemo(() => generateTimeSlots(9, 24, 60), []);
+
+  // 日付ごとにスケジュールをグループ化
+  const schedulesByDate = useMemo(() => {
+    const grouped = new Map<string, Schedule[]>();
+    
+    dates.forEach((date) => {
+      const dateStr = formatDate(date);
+      const daySchedules = schedules.filter(
+        (schedule) => schedule.eventDate === dateStr
+      );
+      grouped.set(dateStr, daySchedules);
+    });
+    
+    return grouped;
+  }, [dates, schedules]);
+
+  // スケジュールの位置とサイズを計算
+  const calculateSchedulePosition = (schedule: Schedule) => {
+    const startMinutes = timeToMinutes(schedule.startTime);
+    const endMinutes = timeToMinutes(schedule.endTime);
+    const duration = endMinutes - startMinutes;
+    
+    // 9:00を基準点（0分）とする
+    const baseMinutes = 9 * 60;
+    const topOffset = startMinutes - baseMinutes;
+    
+    // 1時間 = 60px として計算
+    const pixelsPerMinute = 60 / 60; // 60px / 60分
+    const top = topOffset * pixelsPerMinute;
+    const height = duration * pixelsPerMinute;
+    
+    return { top, height };
+  };
 
   return (
     <div className="w-full overflow-x-auto">
@@ -67,14 +101,40 @@ export function TimelineCalendar({
               </div>
 
               {/* 日付ごとのセル */}
-              {dates.map((date) => (
-                <div
-                  key={`${date.toISOString()}-${timeSlot}`}
-                  className="w-48 flex-shrink-0 border-r last:border-r-0 p-1 min-h-[60px] relative"
-                >
-                  {/* TODO: タスク7.2でスケジュールカードを配置 */}
-                </div>
-              ))}
+              {dates.map((date) => {
+                const dateStr = formatDate(date);
+                const daySchedules = schedulesByDate.get(dateStr) || [];
+                
+                return (
+                  <div
+                    key={`${date.toISOString()}-${timeSlot}`}
+                    className="w-48 flex-shrink-0 border-r last:border-r-0 min-h-[60px] relative"
+                  >
+                    {/* 最初の時間スロットにのみスケジュールカードを配置 */}
+                    {index === 0 && daySchedules.map((schedule) => {
+                      const { top, height } = calculateSchedulePosition(schedule);
+                      
+                      return (
+                        <div
+                          key={schedule.id}
+                          className="absolute"
+                          style={{
+                            top: `${top}px`,
+                            height: `${height}px`,
+                            left: 0,
+                            right: 0,
+                          }}
+                        >
+                          <ScheduleCard
+                            schedule={schedule}
+                            onClick={() => onScheduleClick?.(schedule)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>
