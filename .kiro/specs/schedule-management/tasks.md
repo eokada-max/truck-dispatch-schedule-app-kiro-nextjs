@@ -56,17 +56,21 @@
 
 
   - `app/page.tsx`にトップページを実装する（スケジュール管理ページへのリダイレクトまたはリンク）
+
+
   - `app/schedules/page.tsx`にスケジュール管理ページ（Server Component）を実装する
 
 
   - _Requirements: 7.4_
 
-- [-] 6. データ取得ロジックの実装
+- [x] 6. データ取得ロジックの実装
+
 
 - [ ] 6.1 スケジュールデータ取得関数を実装する
   - `app/schedules/page.tsx`でSupabaseからスケジュールデータを取得する関数を実装する
   - 日付範囲でフィルタリングするクエリを実装する
   - _Requirements: 2.1, 6.2_
+
 
 
 
