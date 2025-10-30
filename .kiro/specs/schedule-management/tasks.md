@@ -14,7 +14,9 @@
   - Shadcn/UIをインストールし、必要な基本コンポーネント（Button、Dialog、Input、Select）を追加する
   - _Requirements: 7.1, 7.2_
 
-- [-] 2. データベーススキーマの作成
+- [x] 2. データベーススキーマの作成
+
+
 
   - Supabaseで`clients_kiro_nextjs`テーブルを作成する（id, name, contact_info）
   - Supabaseで`partner_companies_kiro_nextjs`テーブルを作成する（id, name, contact_info）
@@ -23,7 +25,8 @@
   - 必要なインデックスを作成する（event_date, driver_id, client_id）
   - _Requirements: 6.1, 8.1, 8.2, 8.3_
 
-- [ ] 3. TypeScript型定義とSupabaseクライアントの実装
+- [-] 3. TypeScript型定義とSupabaseクライアントの実装
+
   - `types/Schedule.ts`、`types/Client.ts`、`types/Driver.ts`、`types/PartnerCompany.ts`を作成する
   - `lib/supabase/client.ts`（ブラウザ用Supabaseクライアント）を実装する
   - `lib/supabase/server.ts`（サーバー用Supabaseクライアント）を実装する
