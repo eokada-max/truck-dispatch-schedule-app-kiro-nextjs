@@ -49,11 +49,15 @@
 
 
 
+
+
 - [ ] 5. 基本レイアウトとルーティングの実装
   - `app/layout.tsx`にルートレイアウトを実装する（Tailwind CSS、フォント設定）
 
+
   - `app/page.tsx`にトップページを実装する（スケジュール管理ページへのリダイレクトまたはリンク）
   - `app/schedules/page.tsx`にスケジュール管理ページ（Server Component）を実装する
+
   - _Requirements: 7.4_
 
 - [ ] 6. データ取得ロジックの実装
