@@ -7,6 +7,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "配送スケジュール管理",
   description: "配送業向けスケジュール管理アプリケーション",
+  keywords: ["配送", "スケジュール", "管理", "タイムライン"],
 };
 
 export default function RootLayout({
@@ -15,8 +16,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
-      <body className={inter.className}>{children}</body>
+    <html lang="ja" suppressHydrationWarning>
+      <body className={inter.className}>
+        <div className="min-h-screen bg-background">
+          {children}
+        </div>
+      </body>
     </html>
   );
 }
