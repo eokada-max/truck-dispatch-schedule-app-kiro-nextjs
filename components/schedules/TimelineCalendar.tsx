@@ -2,12 +2,17 @@
 
 import { useMemo } from "react";
 import type { Schedule } from "@/types/Schedule";
-import { generateDateRange, formatDateShort, getWeekdayJa, isSameDay, formatDate, parseDate } from "@/lib/utils/dateUtils";
+import type { Client } from "@/types/Client";
+import type { Driver } from "@/types/Driver";
+import { generateDateRange, formatDateShort, getWeekdayJa, formatDate } from "@/lib/utils/dateUtils";
 import { generateTimeSlots, timeToMinutes } from "@/lib/utils/timeUtils";
 import { ScheduleCard } from "./ScheduleCard";
+import { CalendarX2 } from "lucide-react";
 
 interface TimelineCalendarProps {
   schedules: Schedule[];
+  clients: Client[];
+  drivers: Driver[];
   startDate: Date;
   endDate: Date;
   onScheduleClick?: (schedule: Schedule) => void;
@@ -19,6 +24,8 @@ interface TimelineCalendarProps {
  */
 export function TimelineCalendar({
   schedules,
+  clients,
+  drivers,
   startDate,
   endDate,
   onScheduleClick,
@@ -31,6 +38,19 @@ export function TimelineCalendar({
 
   // 時間軸を生成（9:00-24:00、1時間刻み）
   const timeSlots = useMemo(() => generateTimeSlots(9, 24, 60), []);
+
+  // クライアントとドライバーのマップを作成（高速検索用）
+  const clientsMap = useMemo(() => {
+    const map = new Map<string, Client>();
+    clients.forEach((client) => map.set(client.id, client));
+    return map;
+  }, [clients]);
+
+  const driversMap = useMemo(() => {
+    const map = new Map<string, Driver>();
+    drivers.forEach((driver) => map.set(driver.id, driver));
+    return map;
+  }, [drivers]);
 
   // 日付ごとにスケジュールをグループ化
   const schedulesByDate = useMemo(() => {
@@ -64,6 +84,32 @@ export function TimelineCalendar({
     
     return { top, height };
   };
+
+  // スケジュールが空かどうかを判定
+  const hasSchedules = schedules.length > 0;
+
+  // スケジュールが空の場合の表示
+  if (!hasSchedules) {
+    return (
+      <div className="w-full">
+        <div className="border rounded-lg bg-card p-12 text-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="p-4 bg-muted rounded-full">
+              <CalendarX2 className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-2">スケジュールがありません</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                この期間にはまだスケジュールが登録されていません。
+                <br />
+                「スケジュール登録」ボタンから新しいスケジュールを追加してください。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -119,6 +165,8 @@ export function TimelineCalendar({
                     {/* 最初の時間スロットにのみスケジュールカードを配置 */}
                     {index === 0 && daySchedules.map((schedule) => {
                       const { top, height } = calculateSchedulePosition(schedule);
+                      const clientName = schedule.clientId ? clientsMap.get(schedule.clientId)?.name : undefined;
+                      const driverName = schedule.driverId ? driversMap.get(schedule.driverId)?.name : undefined;
                       
                       return (
                         <div
@@ -133,6 +181,8 @@ export function TimelineCalendar({
                         >
                           <ScheduleCard
                             schedule={schedule}
+                            clientName={clientName}
+                            driverName={driverName}
                             onClick={() => onScheduleClick?.(schedule)}
                           />
                         </div>

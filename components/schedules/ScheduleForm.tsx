@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { Schedule, ScheduleFormData } from "@/types/Schedule";
 import type { Client } from "@/types/Client";
 import type { Driver } from "@/types/Driver";
+import { formatDate, getToday } from "@/lib/utils/dateUtils";
+import { getCurrentTime, roundTime, minutesToTime, timeToMinutes } from "@/lib/utils/timeUtils";
 import {
   Dialog,
   DialogContent,
@@ -48,17 +50,44 @@ export function ScheduleForm({
 }: ScheduleFormProps) {
   const isEditMode = !!schedule;
 
+  // デフォルト値を計算（新規作成時のみ）
+  const defaultValues = useMemo(() => {
+    if (schedule) {
+      // 編集モードの場合は既存の値を使用
+      return {
+        eventDate: schedule.eventDate,
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
+        title: schedule.title,
+        destinationAddress: schedule.destinationAddress,
+        content: schedule.content || "",
+        clientId: schedule.clientId || "",
+        driverId: schedule.driverId || "",
+      };
+    }
+
+    // 新規作成モードの場合はデフォルト値を計算
+    const today = formatDate(getToday());
+    const currentTime = getCurrentTime();
+    const roundedStartTime = roundTime(currentTime, 15); // 15分単位で丸める
+    const startMinutes = timeToMinutes(roundedStartTime);
+    const endMinutes = startMinutes + 60; // 開始時間 + 1時間
+    const defaultEndTime = minutesToTime(endMinutes);
+
+    return {
+      eventDate: today,
+      startTime: roundedStartTime,
+      endTime: defaultEndTime,
+      title: "",
+      destinationAddress: "",
+      content: "",
+      clientId: "",
+      driverId: "",
+    };
+  }, [schedule]);
+
   // フォーム状態
-  const [formData, setFormData] = useState<ScheduleFormData>({
-    eventDate: schedule?.eventDate || "",
-    startTime: schedule?.startTime || "09:00",
-    endTime: schedule?.endTime || "10:00",
-    title: schedule?.title || "",
-    destinationAddress: schedule?.destinationAddress || "",
-    content: schedule?.content || "",
-    clientId: schedule?.clientId || "",
-    driverId: schedule?.driverId || "",
-  });
+  const [formData, setFormData] = useState<ScheduleFormData>(defaultValues);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -117,11 +146,18 @@ export function ScheduleForm({
     try {
       await onSubmit(formData);
       onOpenChange(false);
-      // フォームをリセット
+      // フォームをリセット（デフォルト値を再計算）
+      const today = formatDate(getToday());
+      const currentTime = getCurrentTime();
+      const roundedStartTime = roundTime(currentTime, 15);
+      const startMinutes = timeToMinutes(roundedStartTime);
+      const endMinutes = startMinutes + 60;
+      const defaultEndTime = minutesToTime(endMinutes);
+      
       setFormData({
-        eventDate: "",
-        startTime: "09:00",
-        endTime: "10:00",
+        eventDate: today,
+        startTime: roundedStartTime,
+        endTime: defaultEndTime,
         title: "",
         destinationAddress: "",
         content: "",
@@ -284,46 +320,58 @@ export function ScheduleForm({
           {/* クライアント */}
           <div className="space-y-2">
             <Label htmlFor="clientId">クライアント</Label>
-            <Select
-              value={formData.clientId}
-              onValueChange={(value) =>
-                setFormData({ ...formData, clientId: value })
-              }
-            >
-              <SelectTrigger id="clientId">
-                <SelectValue placeholder="クライアントを選択" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((client) => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {clients.length === 0 ? (
+              <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-md">
+                クライアントが登録されていません。先にクライアントを登録してください。
+              </div>
+            ) : (
+              <Select
+                value={formData.clientId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, clientId: value })
+                }
+              >
+                <SelectTrigger id="clientId">
+                  <SelectValue placeholder="クライアントを選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* ドライバー */}
           <div className="space-y-2">
             <Label htmlFor="driverId">ドライバー</Label>
-            <Select
-              value={formData.driverId}
-              onValueChange={(value) =>
-                setFormData({ ...formData, driverId: value })
-              }
-            >
-              <SelectTrigger id="driverId">
-                <SelectValue placeholder="ドライバーを選択" />
-              </SelectTrigger>
-              <SelectContent>
-                {drivers.map((driver) => (
-                  <SelectItem key={driver.id} value={driver.id}>
-                    {driver.name}
-                    {!driver.isInHouse && " (協力会社)"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {drivers.length === 0 ? (
+              <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-md">
+                ドライバーが登録されていません。先にドライバーを登録してください。
+              </div>
+            ) : (
+              <Select
+                value={formData.driverId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, driverId: value })
+                }
+              >
+                <SelectTrigger id="driverId">
+                  <SelectValue placeholder="ドライバーを選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  {drivers.map((driver) => (
+                    <SelectItem key={driver.id} value={driver.id}>
+                      {driver.name}
+                      {!driver.isInHouse && " (協力会社)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <DialogFooter className="gap-2">

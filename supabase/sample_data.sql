@@ -23,19 +23,12 @@ INSERT INTO drivers_kiro_nextjs (name, contact_info, is_in_house, partner_compan
   ('伊藤美咲', '090-4567-8901', true, NULL);
 
 -- ドライバーデータ（協力会社）
--- 注: partner_company_idは実際のUUIDに置き換える必要があります
--- 以下は例として記載していますが、実際には協力会社のIDを取得してから実行してください
-/*
 INSERT INTO drivers_kiro_nextjs (name, contact_info, is_in_house, partner_company_id) VALUES
   ('佐々木健太', '090-5678-9012', false, (SELECT id FROM partner_companies_kiro_nextjs WHERE name = '東京配送サービス' LIMIT 1)),
   ('渡辺由美', '090-6789-0123', false, (SELECT id FROM partner_companies_kiro_nextjs WHERE name = '関東運輸株式会社' LIMIT 1)),
   ('加藤誠', '090-7890-1234', false, (SELECT id FROM partner_companies_kiro_nextjs WHERE name = '首都圏物流' LIMIT 1));
-*/
 
 -- スケジュールデータ（今日から1週間分）
--- 注: client_idとdriver_idは実際のUUIDに置き換える必要があります
--- 以下は例として記載していますが、実際にはクライアントとドライバーのIDを取得してから実行してください
-/*
 INSERT INTO schedules_kiro_nextjs (event_date, start_time, end_time, title, destination_address, content, client_id, driver_id) VALUES
   (CURRENT_DATE, '09:00', '11:00', '東京都内配送', '東京都千代田区丸の内1-1-1', '書類配送', 
    (SELECT id FROM clients_kiro_nextjs WHERE name = '株式会社山田商事' LIMIT 1),
@@ -76,16 +69,9 @@ INSERT INTO schedules_kiro_nextjs (event_date, start_time, end_time, title, dest
   (CURRENT_DATE + 5, '10:00', '12:00', '都内配送', '東京都品川区大崎1-1-1', '書類配送',
    (SELECT id FROM clients_kiro_nextjs WHERE name = '高橋商店' LIMIT 1),
    (SELECT id FROM drivers_kiro_nextjs WHERE name = '中村花子' LIMIT 1));
-*/
 
--- 上記のコメントアウトされたINSERT文を実行する前に、
--- 以下のクエリでIDを確認してください：
-
--- クライアントIDの確認
--- SELECT id, name FROM clients_kiro_nextjs;
-
--- ドライバーIDの確認
--- SELECT id, name FROM drivers_kiro_nextjs;
-
--- 協力会社IDの確認
--- SELECT id, name FROM partner_companies_kiro_nextjs;
+-- データ確認用クエリ
+-- クライアント確認: SELECT id, name FROM clients_kiro_nextjs;
+-- ドライバー確認: SELECT id, name, is_in_house FROM drivers_kiro_nextjs;
+-- 協力会社確認: SELECT id, name FROM partner_companies_kiro_nextjs;
+-- スケジュール確認: SELECT event_date, title, start_time, end_time FROM schedules_kiro_nextjs ORDER BY event_date, start_time;

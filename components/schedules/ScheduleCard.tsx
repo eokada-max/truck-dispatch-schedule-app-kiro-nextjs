@@ -2,10 +2,12 @@
 
 import type { Schedule } from "@/types/Schedule";
 import { formatTimeRange } from "@/lib/utils/timeUtils";
-import { MapPin } from "lucide-react";
+import { MapPin, User, Building2 } from "lucide-react";
 
 interface ScheduleCardProps {
   schedule: Schedule;
+  clientName?: string;
+  driverName?: string;
   onClick?: () => void;
 }
 
@@ -13,7 +15,7 @@ interface ScheduleCardProps {
  * ScheduleCardコンポーネント
  * タイムライン上の個別スケジュール表示
  */
-export function ScheduleCard({ schedule, onClick }: ScheduleCardProps) {
+export function ScheduleCard({ schedule, clientName, driverName, onClick }: ScheduleCardProps) {
   return (
     <div
       onClick={onClick}
@@ -33,6 +35,22 @@ export function ScheduleCard({ schedule, onClick }: ScheduleCardProps) {
           {schedule.destinationAddress}
         </div>
       </div>
+      {clientName && (
+        <div className="flex items-center gap-1 mt-1">
+          <Building2 className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+          <div className="text-xs text-muted-foreground truncate">
+            {clientName}
+          </div>
+        </div>
+      )}
+      {driverName && (
+        <div className="flex items-center gap-1 mt-1">
+          <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+          <div className="text-xs text-muted-foreground truncate">
+            {driverName}
+          </div>
+        </div>
+      )}
       <div className="text-xs text-muted-foreground mt-1">
         {formatTimeRange(schedule.startTime, schedule.endTime)}
       </div>

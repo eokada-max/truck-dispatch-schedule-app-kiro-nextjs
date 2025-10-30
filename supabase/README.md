@@ -85,30 +85,41 @@ CREATE POLICY "Enable insert for authenticated users" ON schedules_kiro_nextjs
 
 2. `sample_data.sql`の内容をコピーして実行
 
-3. クライアントと協力会社のデータが投入されます
+3. 以下のデータが自動的に投入されます：
+   - クライアント: 5件
+   - 協力会社: 3件
+   - ドライバー: 7件（自社4件 + 協力会社3件）
+   - スケジュール: 10件（今日から1週間分）
 
-4. ドライバーとスケジュールのデータは、コメントアウトされているINSERT文のコメントを外して実行してください
-   - 協力会社のドライバーを追加する場合は、協力会社のIDを確認してから実行
-   - スケジュールを追加する場合は、クライアントとドライバーのIDを確認してから実行
+### データ確認
 
-### IDの確認方法
+投入後、以下のSQLで確認できます：
 
 ```sql
--- クライアントIDの確認
-SELECT id, name FROM clients_kiro_nextjs;
+-- クライアント確認
+SELECT id, name, contact_info FROM clients_kiro_nextjs;
 
--- ドライバーIDの確認
-SELECT id, name FROM drivers_kiro_nextjs;
+-- 協力会社確認
+SELECT id, name, contact_info FROM partner_companies_kiro_nextjs;
 
--- 協力会社IDの確認
-SELECT id, name FROM partner_companies_kiro_nextjs;
+-- ドライバー確認
+SELECT id, name, is_in_house, partner_company_id FROM drivers_kiro_nextjs;
+
+-- スケジュール確認
+SELECT event_date, start_time, end_time, title FROM schedules_kiro_nextjs 
+ORDER BY event_date, start_time;
 ```
+
+### 詳細なガイド
+
+より詳しい手順については、`SAMPLE_DATA_GUIDE.md`を参照してください。
 
 ### 注意事項
 
 - サンプルデータは開発・テスト環境でのみ使用してください
 - 本番環境では実際のデータを使用してください
 - スケジュールデータは`CURRENT_DATE`を基準に作成されるため、実行日によって日付が変わります
+- 既にデータが存在する場合は、重複エラーが発生します（その場合は既存データを削除してから再実行）
 
 ## トラブルシューティング
 

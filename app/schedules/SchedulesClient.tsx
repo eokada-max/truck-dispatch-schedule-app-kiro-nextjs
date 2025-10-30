@@ -159,6 +159,8 @@ export function SchedulesClient({
       <main className="container mx-auto px-4 py-6">
         <TimelineCalendar
           schedules={initialSchedules}
+          clients={clients}
+          drivers={drivers}
           startDate={startDate}
           endDate={endDate}
           onScheduleClick={handleScheduleClick}
