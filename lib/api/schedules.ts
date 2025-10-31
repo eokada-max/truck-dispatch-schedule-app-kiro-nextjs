@@ -9,6 +9,7 @@ import { toSchedule, toScheduleInsert, toScheduleUpdate } from "@/lib/utils/type
 
 /**
  * 日付範囲でスケジュールを取得（サーバー側）
+ * パフォーマンス最適化：必要なフィールドのみを取得、JOINでクライアント・ドライバー名も取得
  */
 export async function getSchedulesByDateRange(
     startDate: string,
@@ -18,7 +19,21 @@ export async function getSchedulesByDateRange(
 
     const { data, error } = await supabase
         .from("schedules_kiro_nextjs")
-        .select("*")
+        .select(`
+            id,
+            event_date,
+            start_time,
+            end_time,
+            title,
+            destination_address,
+            content,
+            client_id,
+            driver_id,
+            created_at,
+            updated_at,
+            clients_kiro_nextjs!client_id(id, name),
+            drivers_kiro_nextjs!driver_id(id, name)
+        `)
         .gte("event_date", startDate)
         .lte("event_date", endDate)
         .order("event_date", { ascending: true })
@@ -33,13 +48,28 @@ export async function getSchedulesByDateRange(
 
 /**
  * 特定の日付のスケジュールを取得（サーバー側）
+ * パフォーマンス最適化：必要なフィールドのみを取得、JOINでクライアント・ドライバー名も取得
  */
 export async function getSchedulesByDate(date: string): Promise<Schedule[]> {
     const supabase = await createServerClient();
 
-    const { data, error } = await supabase
+    const { data, error} = await supabase
         .from("schedules_kiro_nextjs")
-        .select("*")
+        .select(`
+            id,
+            event_date,
+            start_time,
+            end_time,
+            title,
+            destination_address,
+            content,
+            client_id,
+            driver_id,
+            created_at,
+            updated_at,
+            clients_kiro_nextjs!client_id(id, name),
+            drivers_kiro_nextjs!driver_id(id, name)
+        `)
         .eq("event_date", date)
         .order("start_time", { ascending: true });
 
@@ -52,6 +82,7 @@ export async function getSchedulesByDate(date: string): Promise<Schedule[]> {
 
 /**
  * 特定のドライバーのスケジュールを取得（サーバー側）
+ * パフォーマンス最適化：必要なフィールドのみを取得、JOINでクライアント名も取得
  */
 export async function getSchedulesByDriver(
     driverId: string,
@@ -62,7 +93,20 @@ export async function getSchedulesByDriver(
 
     let query = supabase
         .from("schedules_kiro_nextjs")
-        .select("*")
+        .select(`
+            id,
+            event_date,
+            start_time,
+            end_time,
+            title,
+            destination_address,
+            content,
+            client_id,
+            driver_id,
+            created_at,
+            updated_at,
+            clients_kiro_nextjs!client_id(id, name)
+        `)
         .eq("driver_id", driverId);
 
     if (startDate) {
@@ -169,13 +213,28 @@ export async function deleteSchedule(id: string): Promise<void> {
 
 /**
  * 全スケジュールを取得（サーバー側）
+ * パフォーマンス最適化：必要なフィールドのみを取得、JOINでクライアント・ドライバー名も取得
  */
 export async function getAllSchedules(): Promise<Schedule[]> {
     const supabase = await createServerClient();
 
     const { data, error } = await supabase
         .from("schedules_kiro_nextjs")
-        .select("*")
+        .select(`
+            id,
+            event_date,
+            start_time,
+            end_time,
+            title,
+            destination_address,
+            content,
+            client_id,
+            driver_id,
+            created_at,
+            updated_at,
+            clients_kiro_nextjs!client_id(id, name),
+            drivers_kiro_nextjs!driver_id(id, name)
+        `)
         .order("event_date", { ascending: true })
         .order("start_time", { ascending: true });
 

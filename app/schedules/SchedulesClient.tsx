@@ -1,24 +1,29 @@
 "use client";
 
-import { useState, lazy, Suspense } from "react";
+import { useState, lazy, Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Schedule } from "@/types/Schedule";
 import type { Client } from "@/types/Client";
 import type { Driver } from "@/types/Driver";
-import { TimelineCalendar } from "@/components/schedules/TimelineCalendar";
 import { DateNavigation } from "@/components/schedules/DateNavigation";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { addDays, getToday, formatDate } from "@/lib/utils/dateUtils";
+import { addDays, getToday } from "@/lib/utils/dateUtils";
 // Client側ではブラウザ用のAPI関数を使用
 import { createClient } from "@/lib/supabase/client";
-import type { CreateScheduleInput, UpdateScheduleInput } from "@/types/Schedule";
 import { toScheduleInsert, toScheduleUpdate } from "@/lib/utils/typeConverters";
 import { getErrorMessage } from "@/lib/utils/errorHandler";
 import type { ScheduleFormData } from "@/types/Schedule";
+import { cache } from "@/lib/utils/cache";
 
-// ScheduleFormを動的インポート（遅延ロード）
+// 重いコンポーネントを動的インポート（遅延ロード）
+const TimelineCalendar = lazy(() =>
+  import("@/components/schedules/TimelineCalendar").then((mod) => ({
+    default: mod.TimelineCalendar,
+  }))
+);
+
 const ScheduleForm = lazy(() =>
   import("@/components/schedules/ScheduleForm").then((mod) => ({
     default: mod.ScheduleForm,
@@ -42,20 +47,49 @@ export function SchedulesClient({
   const [currentDate, setCurrentDate] = useState(initialStartDate);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | undefined>();
+  const [prefilledDate, setPrefilledDate] = useState<string | undefined>();
+  const [prefilledStartTime, setPrefilledStartTime] = useState<string | undefined>();
+  const [prefilledEndTime, setPrefilledEndTime] = useState<string | undefined>();
 
   // 表示期間を計算（currentDateから7日間）
   const startDate = currentDate;
   const endDate = addDays(currentDate, 6);
 
+  // パフォーマンス最適化：クライアント、ドライバーをキャッシュ
+  useEffect(() => {
+    const cacheKey = 'master-data';
+    const cached = cache.get<{ clients: Client[]; drivers: Driver[] }>(cacheKey);
+    
+    if (!cached) {
+      // 初回アクセス時にキャッシュに保存（5分間有効）
+      cache.set(cacheKey, { clients, drivers }, 5 * 60 * 1000);
+    }
+  }, [clients, drivers]);
+
   // スケジュール登録ボタンのハンドラー
   const handleCreateClick = () => {
     setSelectedSchedule(undefined);
+    setPrefilledDate(undefined);
+    setPrefilledStartTime(undefined);
+    setPrefilledEndTime(undefined);
     setIsFormOpen(true);
   };
 
   // スケジュールカードクリックのハンドラー
   const handleScheduleClick = (schedule: Schedule) => {
     setSelectedSchedule(schedule);
+    setPrefilledDate(undefined);
+    setPrefilledStartTime(undefined);
+    setPrefilledEndTime(undefined);
+    setIsFormOpen(true);
+  };
+
+  // 時間範囲選択のハンドラー
+  const handleTimeRangeSelect = (date: string, startTime: string, endTime: string) => {
+    setSelectedSchedule(undefined);
+    setPrefilledDate(date);
+    setPrefilledStartTime(startTime);
+    setPrefilledEndTime(endTime);
     setIsFormOpen(true);
   };
 
@@ -185,15 +219,23 @@ export function SchedulesClient({
 
       {/* メインコンテンツ */}
       <main className="container mx-auto px-4 py-6">
-        <TimelineCalendar
-          schedules={initialSchedules}
-          clients={clients}
-          drivers={drivers}
-          startDate={startDate}
-          endDate={endDate}
-          onScheduleClick={handleScheduleClick}
-          onScheduleUpdate={handleScheduleUpdate}
-        />
+        <Suspense fallback={
+          <div className="space-y-4">
+            <div className="h-8 bg-muted rounded animate-pulse" />
+            <div className="h-96 bg-muted rounded animate-pulse" />
+          </div>
+        }>
+          <TimelineCalendar
+            schedules={initialSchedules}
+            clients={clients}
+            drivers={drivers}
+            startDate={startDate}
+            endDate={endDate}
+            onScheduleClick={handleScheduleClick}
+            onScheduleUpdate={handleScheduleUpdate}
+            onTimeRangeSelect={handleTimeRangeSelect}
+          />
+        </Suspense>
       </main>
 
       {/* スケジュールフォーム（遅延ロード） */}
@@ -207,6 +249,9 @@ export function SchedulesClient({
             onOpenChange={setIsFormOpen}
             onSubmit={handleFormSubmit}
             onDelete={selectedSchedule ? handleDelete : undefined}
+            initialDate={prefilledDate}
+            initialStartTime={prefilledStartTime}
+            initialEndTime={prefilledEndTime}
           />
         </Suspense>
       )}

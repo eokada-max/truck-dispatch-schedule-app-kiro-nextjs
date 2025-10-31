@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { Schedule } from "@/types/Schedule";
@@ -15,8 +16,9 @@ interface DraggableScheduleCardProps {
 /**
  * DraggableScheduleCardコンポーネント
  * @dnd-kitを使用したドラッグ可能なスケジュールカード
+ * React.memoでメモ化してパフォーマンスを最適化
  */
-export function DraggableScheduleCard({
+export const DraggableScheduleCard = memo(function DraggableScheduleCard({
   schedule,
   clientName,
   driverName,
@@ -51,4 +53,4 @@ export function DraggableScheduleCard({
       />
     </div>
   );
-}
+});

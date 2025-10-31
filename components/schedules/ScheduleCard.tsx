@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { Schedule } from "@/types/Schedule";
 import { formatTimeRange } from "@/lib/utils/timeUtils";
 import { MapPin, User, Building2 } from "lucide-react";
@@ -14,8 +15,9 @@ interface ScheduleCardProps {
 /**
  * ScheduleCardコンポーネント
  * タイムライン上の個別スケジュール表示
+ * React.memoでメモ化してパフォーマンスを最適化
  */
-export function ScheduleCard({ schedule, clientName, driverName, onClick }: ScheduleCardProps) {
+export const ScheduleCard = memo(function ScheduleCard({ schedule, clientName, driverName, onClick }: ScheduleCardProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onClick?.();
@@ -61,4 +63,4 @@ export function ScheduleCard({ schedule, clientName, driverName, onClick }: Sche
       </div>
     </div>
   );
-}
+});

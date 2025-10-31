@@ -9,13 +9,22 @@ import { toDriver, toDriverInsert, toDriverUpdate } from "@/lib/utils/typeConver
 
 /**
  * 全ドライバーを取得（サーバー側）
+ * パフォーマンス最適化：必要なフィールドのみを取得、JOINで協力会社名も取得
  */
 export async function getAllDrivers(): Promise<Driver[]> {
   const supabase = await createServerClient();
 
   const { data, error } = await supabase
     .from("drivers_kiro_nextjs")
-    .select("*")
+    .select(`
+      id,
+      name,
+      contact_info,
+      is_in_house,
+      partner_company_id,
+      created_at,
+      partner_companies_kiro_nextjs!partner_company_id(id, name)
+    `)
     .order("name", { ascending: true });
 
   if (error) {
@@ -30,13 +39,14 @@ export const getDrivers = getAllDrivers;
 
 /**
  * 自社ドライバーのみを取得（サーバー側）
+ * パフォーマンス最適化：必要なフィールドのみを取得
  */
 export async function getInHouseDrivers(): Promise<Driver[]> {
   const supabase = await createServerClient();
 
   const { data, error } = await supabase
     .from("drivers_kiro_nextjs")
-    .select("*")
+    .select("id, name, contact_info, is_in_house, partner_company_id, created_at")
     .eq("is_in_house", true)
     .order("name", { ascending: true });
 
@@ -49,13 +59,22 @@ export async function getInHouseDrivers(): Promise<Driver[]> {
 
 /**
  * 協力会社ドライバーのみを取得（サーバー側）
+ * パフォーマンス最適化：必要なフィールドのみを取得、JOINで協力会社名も取得
  */
 export async function getPartnerDrivers(): Promise<Driver[]> {
   const supabase = await createServerClient();
 
   const { data, error } = await supabase
     .from("drivers_kiro_nextjs")
-    .select("*")
+    .select(`
+      id,
+      name,
+      contact_info,
+      is_in_house,
+      partner_company_id,
+      created_at,
+      partner_companies_kiro_nextjs!partner_company_id(id, name)
+    `)
     .eq("is_in_house", false)
     .order("name", { ascending: true });
 
@@ -68,6 +87,7 @@ export async function getPartnerDrivers(): Promise<Driver[]> {
 
 /**
  * 特定の協力会社のドライバーを取得（サーバー側）
+ * パフォーマンス最適化：必要なフィールドのみを取得、JOINで協力会社名も取得
  */
 export async function getDriversByPartnerCompany(
   partnerCompanyId: string
@@ -76,7 +96,15 @@ export async function getDriversByPartnerCompany(
 
   const { data, error } = await supabase
     .from("drivers_kiro_nextjs")
-    .select("*")
+    .select(`
+      id,
+      name,
+      contact_info,
+      is_in_house,
+      partner_company_id,
+      created_at,
+      partner_companies_kiro_nextjs!partner_company_id(id, name)
+    `)
     .eq("partner_company_id", partnerCompanyId)
     .order("name", { ascending: true });
 

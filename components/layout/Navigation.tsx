@@ -42,7 +42,7 @@ export function Navigation() {
                 <span className="hidden sm:inline">配送スケジュール管理</span>
                 <span className="sm:hidden">配送管理</span>
               </span>
-              <span className="text-xs text-muted-foreground">v1.0.0-dnd</span>
+              <span className="text-xs text-muted-foreground">v1.1.0 - ドラッグ&ドロップ、時間範囲選択、リサイズ対応</span>
             </div>
           </Link>
 

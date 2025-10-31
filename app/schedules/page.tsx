@@ -4,9 +4,17 @@ import { getAllDrivers } from "@/lib/api/drivers";
 import { formatDate, addDays, getToday } from "@/lib/utils/dateUtils";
 import { SchedulesClient } from "./SchedulesClient";
 
+// パフォーマンス最適化：キャッシング戦略
+// revalidate: 60秒ごとにキャッシュを再検証
+export const revalidate = 60;
+
+// 動的レンダリングを強制（リアルタイム性を保つ）
+export const dynamic = 'force-dynamic';
+
 /**
  * スケジュール管理ページ（Server Component）
  * データ取得を担当し、Client Componentに渡す
+ * パフォーマンス最適化：60秒間キャッシュを保持
  */
 export default async function SchedulesPage() {
   // デフォルトで今日から7日間のスケジュールを取得

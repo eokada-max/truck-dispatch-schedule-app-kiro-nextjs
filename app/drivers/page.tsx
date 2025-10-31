@@ -8,6 +8,9 @@ export const metadata = {
   description: "ドライバー（自社・協力会社）の管理",
 };
 
+// パフォーマンス最適化：5分間キャッシュ
+export const revalidate = 300;
+
 export default async function DriversPage() {
   const [drivers, partnerCompanies] = await Promise.all([
     getDrivers(),

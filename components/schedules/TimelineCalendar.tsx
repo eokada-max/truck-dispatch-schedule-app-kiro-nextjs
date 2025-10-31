@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -8,18 +8,16 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  useDroppable,
-  closestCenter,
   pointerWithin,
-  rectIntersection
 } from "@dnd-kit/core";
 import type { Schedule } from "@/types/Schedule";
 import type { Client } from "@/types/Client";
 import type { Driver } from "@/types/Driver";
 import { generateDateRange, formatDateShort, getWeekdayJa, formatDate } from "@/lib/utils/dateUtils";
 import { generateTimeSlots, timeToMinutes } from "@/lib/utils/timeUtils";
-import { DraggableScheduleCard } from "./DraggableScheduleCard";
+import { throttle } from "@/lib/utils/performanceUtils";
 import { ScheduleCard } from "./ScheduleCard";
+import { DroppableColumn } from "./DroppableColumn";
 import { CalendarX2 } from "lucide-react";
 
 interface TimelineCalendarProps {
@@ -30,6 +28,16 @@ interface TimelineCalendarProps {
   endDate: Date;
   onScheduleClick?: (schedule: Schedule) => void;
   onScheduleUpdate?: (scheduleId: string, updates: Partial<Schedule>) => Promise<void>;
+  onTimeRangeSelect?: (date: string, startTime: string, endTime: string) => void;
+}
+
+// 時間範囲選択の状態
+interface SelectionState {
+  isSelecting: boolean;
+  startDate: string | null;
+  startY: number | null;
+  currentY: number | null;
+  columnElement: HTMLElement | null;
 }
 
 /**
@@ -44,9 +52,17 @@ export function TimelineCalendar({
   endDate,
   onScheduleClick,
   onScheduleUpdate,
+  onTimeRangeSelect,
 }: TimelineCalendarProps) {
   const [activeSchedule, setActiveSchedule] = useState<Schedule | null>(null);
   const [optimisticSchedules, setOptimisticSchedules] = useState<Schedule[]>(schedules);
+  const [selectionState, setSelectionState] = useState<SelectionState>({
+    isSelecting: false,
+    startDate: null,
+    startY: null,
+    currentY: null,
+    columnElement: null,
+  });
 
   // schedulesが変更されたら、optimisticSchedulesも更新
   useMemo(() => {
@@ -99,8 +115,8 @@ export function TimelineCalendar({
     return grouped;
   }, [dates, optimisticSchedules]);
 
-  // スケジュールの位置とサイズを計算
-  const calculateSchedulePosition = (schedule: Schedule) => {
+  // スケジュールの位置とサイズを計算（useCallbackでメモ化）
+  const calculateSchedulePosition = useCallback((schedule: Schedule) => {
     const startMinutes = timeToMinutes(schedule.startTime);
     const endMinutes = timeToMinutes(schedule.endTime);
     const duration = endMinutes - startMinutes;
@@ -115,6 +131,31 @@ export function TimelineCalendar({
     const height = duration * pixelsPerMinute;
 
     return { top, height };
+  }, []);
+
+  // マウス位置（clientY）から時間を計算する関数
+  const calculateTimeFromY = (clientY: number, columnElement: HTMLElement): string => {
+    const rect = columnElement.getBoundingClientRect();
+    const relativeY = clientY - rect.top;
+
+    // 1時間 = 60px として計算
+    const pixelsPerMinute = 1; // 60px / 60分
+    const totalMinutes = Math.floor(relativeY / pixelsPerMinute);
+
+    // 9:00を基準点とする
+    const baseMinutes = 9 * 60;
+    const actualMinutes = baseMinutes + totalMinutes;
+
+    // 15分単位にスナップ
+    const snappedMinutes = Math.round(actualMinutes / 15) * 15;
+
+    // 時間範囲を制限（9:00-24:00）
+    const clampedMinutes = Math.max(9 * 60, Math.min(24 * 60, snappedMinutes));
+
+    const hours = Math.floor(clampedMinutes / 60);
+    const minutes = clampedMinutes % 60;
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
   };
 
   // カスタムモディファイア：Y軸を15分単位（15px）にスナップ
@@ -126,16 +167,16 @@ export function TimelineCalendar({
     };
   };
 
-  // ドラッグ開始ハンドラー
-  const handleDragStart = (event: any) => {
+  // ドラッグ開始ハンドラー（useCallbackでメモ化）
+  const handleDragStart = useCallback((event: any) => {
     const schedule = event.active.data.current?.schedule;
     if (schedule) {
       setActiveSchedule(schedule);
     }
-  };
+  }, []);
 
-  // ドラッグ終了ハンドラー
-  const handleDragEnd = async (event: DragEndEvent) => {
+  // ドラッグ終了ハンドラー（useCallbackでメモ化）
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     console.log("Drag end event:", event);
     setActiveSchedule(null);
 
@@ -203,7 +244,120 @@ export function TimelineCalendar({
         setOptimisticSchedules(schedules);
       }
     }
-  };
+  }, [onScheduleUpdate, schedules]);
+
+  // マウスダウンハンドラー（時間範囲選択開始）（useCallbackでメモ化）
+  const handleMouseDown = useCallback((e: React.MouseEvent, date: string, columnElement: HTMLElement) => {
+    // スケジュールカード上でのクリックは無視
+    if ((e.target as HTMLElement).closest('.schedule-card')) {
+      return;
+    }
+
+    setSelectionState({
+      isSelecting: true,
+      startDate: date,
+      startY: e.clientY,
+      currentY: e.clientY,
+      columnElement,
+    });
+  }, []);
+
+  // クリック時の1時間枠作成用の時間計算（useCallbackでメモ化）
+  const calculateOneHourSlot = useCallback((clientY: number, columnElement: HTMLElement): { startTime: string; endTime: string } => {
+    const rect = columnElement.getBoundingClientRect();
+    const relativeY = clientY - rect.top;
+
+    // 1時間 = 60px として計算
+    const pixelsPerMinute = 1;
+    const totalMinutes = Math.floor(relativeY / pixelsPerMinute);
+
+    // 9:00を基準点とする
+    const baseMinutes = 9 * 60;
+    const actualMinutes = baseMinutes + totalMinutes;
+
+    // 1時間単位にスナップ（クリックした時間帯の開始時刻）
+    const snappedMinutes = Math.floor(actualMinutes / 60) * 60;
+
+    // 時間範囲を制限（9:00-23:00）
+    const clampedMinutes = Math.max(9 * 60, Math.min(23 * 60, snappedMinutes));
+
+    const startHours = Math.floor(clampedMinutes / 60);
+    const startMins = clampedMinutes % 60;
+    const startTime = `${String(startHours).padStart(2, '0')}:${String(startMins).padStart(2, '0')}:00`;
+
+    // 終了時間は開始時間 + 1時間
+    const endMinutes = clampedMinutes + 60;
+    const endHours = Math.floor(endMinutes / 60);
+    const endMins = endMinutes % 60;
+    const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}:00`;
+
+    return { startTime, endTime };
+  }, []);
+
+  // マウスムーブハンドラー（選択範囲更新）（useCallbackでメモ化、スロットルで最適化）
+  const handleMouseMove = useCallback(
+    throttle((e: React.MouseEvent) => {
+      if (!selectionState.isSelecting) {
+        return;
+      }
+
+      setSelectionState(prev => ({
+        ...prev,
+        currentY: e.clientY,
+      }));
+    }, 16), // 16ms（約60fps）でスロットル
+    [selectionState.isSelecting]
+  );
+
+  // マウスアップハンドラー（選択完了）（useCallbackでメモ化）
+  const handleMouseUp = useCallback(() => {
+    if (!selectionState.isSelecting || !selectionState.startDate || !selectionState.startY || !selectionState.currentY || !selectionState.columnElement) {
+      setSelectionState({
+        isSelecting: false,
+        startDate: null,
+        startY: null,
+        currentY: null,
+        columnElement: null,
+      });
+      return;
+    }
+
+    // Y座標の移動量を計算
+    const deltaY = Math.abs(selectionState.currentY - selectionState.startY);
+
+    // 移動量が5px以下の場合はクリックとみなす
+    if (deltaY <= 5) {
+      // クリック：1時間枠でフォームを開く
+      const { startTime, endTime } = calculateOneHourSlot(selectionState.startY, selectionState.columnElement);
+      if (onTimeRangeSelect) {
+        onTimeRangeSelect(selectionState.startDate, startTime, endTime);
+      }
+    } else {
+      // ドラッグ：選択範囲でフォームを開く
+      const startTime = calculateTimeFromY(Math.min(selectionState.startY, selectionState.currentY), selectionState.columnElement);
+      const endTime = calculateTimeFromY(Math.max(selectionState.startY, selectionState.currentY), selectionState.columnElement);
+
+      // 最小選択時間チェック（15分）
+      const startMinutes = timeToMinutes(startTime);
+      const endMinutes = timeToMinutes(endTime);
+      const duration = endMinutes - startMinutes;
+
+      if (duration >= 15 && onTimeRangeSelect) {
+        onTimeRangeSelect(selectionState.startDate, startTime, endTime);
+      }
+    }
+
+    // 選択状態をリセット
+    setSelectionState({
+      isSelecting: false,
+      startDate: null,
+      startY: null,
+      currentY: null,
+      columnElement: null,
+    });
+  }, [selectionState, onTimeRangeSelect, calculateOneHourSlot, calculateTimeFromY]);
+
+
 
   // スケジュールが空かどうかを判定
   const hasSchedules = schedules.length > 0;
@@ -233,13 +387,18 @@ export function TimelineCalendar({
 
   return (
     <DndContext
+      id="timeline-dnd-context"
       sensors={sensors}
       collisionDetection={pointerWithin}
       modifiers={[snapToGrid]}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="w-full">
+      <div
+        className="w-full"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      >
         {/* モバイル用スクロールヒント */}
         <div className="mb-2 text-xs text-muted-foreground md:hidden">
           ← 横にスクロールできます →
@@ -290,12 +449,15 @@ export function TimelineCalendar({
                   <DroppableColumn
                     key={date.toISOString()}
                     id={`date-${dateStr}`}
+                    date={dateStr}
                     timeSlots={timeSlots}
                     schedules={daySchedules}
                     clientsMap={clientsMap}
                     driversMap={driversMap}
                     calculateSchedulePosition={calculateSchedulePosition}
                     onScheduleClick={onScheduleClick}
+                    onMouseDown={handleMouseDown}
+                    selectionState={selectionState}
                   />
                 );
               })}
@@ -317,73 +479,6 @@ export function TimelineCalendar({
         ) : null}
       </DragOverlay>
     </DndContext>
-  );
-}
-
-// ドロップ可能な日付列コンポーネント
-function DroppableColumn({
-  id,
-  timeSlots,
-  schedules,
-  clientsMap,
-  driversMap,
-  calculateSchedulePosition,
-  onScheduleClick,
-}: {
-  id: string;
-  timeSlots: string[];
-  schedules: Schedule[];
-  clientsMap: Map<string, Client>;
-  driversMap: Map<string, Driver>;
-  calculateSchedulePosition: (schedule: Schedule) => { top: number; height: number };
-  onScheduleClick?: (schedule: Schedule) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({
-    id,
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`w-48 flex-shrink-0 border-r last:border-r-0 relative ${isOver ? "bg-primary/5" : ""
-        }`}
-    >
-      {/* 時間スロットの背景グリッド */}
-      {timeSlots.map((timeSlot) => (
-        <div
-          key={timeSlot}
-          className="border-b last:border-b-0 min-h-[60px]"
-        />
-      ))}
-
-      {/* スケジュールカードを絶対配置 */}
-      {schedules.map((schedule) => {
-        const { top, height } = calculateSchedulePosition(schedule);
-        const clientName = schedule.clientId ? clientsMap.get(schedule.clientId)?.name : undefined;
-        const driverName = schedule.driverId ? driversMap.get(schedule.driverId)?.name : undefined;
-
-        return (
-          <div
-            key={schedule.id}
-            className="absolute"
-            style={{
-              top: `${top}px`,
-              height: `${height}px`,
-              left: 0,
-              right: 0,
-              zIndex: 10,
-            }}
-          >
-            <DraggableScheduleCard
-              schedule={schedule}
-              clientName={clientName}
-              driverName={driverName}
-              onClick={() => onScheduleClick?.(schedule)}
-            />
-          </div>
-        );
-      })}
-    </div>
   );
 }
 

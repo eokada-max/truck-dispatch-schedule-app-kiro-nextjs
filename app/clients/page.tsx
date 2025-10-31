@@ -7,6 +7,9 @@ export const metadata = {
   description: "クライアント（配送依頼元）の管理",
 };
 
+// パフォーマンス最適化：5分間キャッシュ
+export const revalidate = 300;
+
 export default async function ClientsPage() {
   const clients = await getClients();
 

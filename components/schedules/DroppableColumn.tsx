@@ -1,0 +1,115 @@
+import { memo } from "react";
+import { useDroppable } from "@dnd-kit/core";
+import type { Schedule } from "@/types/Schedule";
+import type { Client } from "@/types/Client";
+import type { Driver } from "@/types/Driver";
+import { LazyScheduleCard } from "./LazyScheduleCard";
+import { TimeSlotGrid } from "./TimeSlotGrid";
+import { SelectionOverlay } from "./SelectionOverlay";
+
+interface SelectionState {
+  isSelecting: boolean;
+  startDate: string | null;
+  startY: number | null;
+  currentY: number | null;
+  columnElement: HTMLElement | null;
+}
+
+interface DroppableColumnProps {
+  id: string;
+  date: string;
+  timeSlots: string[];
+  schedules: Schedule[];
+  clientsMap: Map<string, Client>;
+  driversMap: Map<string, Driver>;
+  calculateSchedulePosition: (schedule: Schedule) => { top: number; height: number };
+  onScheduleClick?: (schedule: Schedule) => void;
+  onMouseDown: (e: React.MouseEvent, date: string, columnElement: HTMLElement) => void;
+  selectionState: SelectionState;
+}
+
+/**
+ * DroppableColumn - ドロップ可能な日付列コンポーネント
+ * メモ化により、propsが変更されない限り再レンダリングされない
+ */
+export const DroppableColumn = memo(function DroppableColumn({
+  id,
+  date,
+  timeSlots,
+  schedules,
+  clientsMap,
+  driversMap,
+  calculateSchedulePosition,
+  onScheduleClick,
+  onMouseDown,
+  selectionState,
+}: DroppableColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id,
+  });
+
+  // 選択範囲の矩形を計算
+  const getSelectionRect = () => {
+    if (
+      !selectionState.isSelecting ||
+      selectionState.startDate !== date ||
+      !selectionState.startY ||
+      !selectionState.currentY ||
+      !selectionState.columnElement
+    ) {
+      return null;
+    }
+
+    const rect = selectionState.columnElement.getBoundingClientRect();
+    const top = Math.min(selectionState.startY, selectionState.currentY) - rect.top;
+    const height = Math.abs(selectionState.currentY - selectionState.startY);
+
+    return { top, height };
+  };
+
+  const selectionRect = getSelectionRect();
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`w-48 flex-shrink-0 border-r last:border-r-0 relative ${
+        isOver ? "bg-primary/5" : ""
+      }`}
+      onMouseDown={(e) => {
+        const columnElement = e.currentTarget;
+        onMouseDown(e, date, columnElement);
+      }}
+    >
+      {/* 時間スロットの背景グリッド */}
+      <TimeSlotGrid timeSlots={timeSlots} />
+
+      {/* 選択範囲の表示 */}
+      {selectionRect && (
+        <SelectionOverlay top={selectionRect.top} height={selectionRect.height} />
+      )}
+
+      {/* スケジュールカードを絶対配置（遅延レンダリング対応） */}
+      {schedules.map((schedule) => {
+        const { top, height } = calculateSchedulePosition(schedule);
+        const clientName = schedule.clientId
+          ? clientsMap.get(schedule.clientId)?.name
+          : undefined;
+        const driverName = schedule.driverId
+          ? driversMap.get(schedule.driverId)?.name
+          : undefined;
+
+        return (
+          <LazyScheduleCard
+            key={schedule.id}
+            schedule={schedule}
+            clientName={clientName}
+            driverName={driverName}
+            top={top}
+            height={height}
+            onClick={() => onScheduleClick?.(schedule)}
+          />
+        );
+      })}
+    </div>
+  );
+});

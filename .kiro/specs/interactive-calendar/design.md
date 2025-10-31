@@ -523,20 +523,28 @@ const handleTouchMove = (e: React.TouchEvent) => {
 
 ## Dependencies
 
-### 新規ライブラリ
+### 使用ライブラリ
 
-**なし** - HTML5 Drag and Drop APIとReactの標準機能のみを使用します。
+**@dnd-kit** - モダンなドラッグ&ドロップライブラリ（Phase 1で導入済み）
 
 **理由:**
-- ✅ 依存関係を増やさない
-- ✅ バンドルサイズを小さく保つ
-- ✅ カスタマイズの自由度が高い
-- ✅ Next.js/Reactの標準機能で十分実装可能
+- ✅ アクセシビリティ対応が標準装備
+- ✅ タッチデバイス対応が簡単
+- ✅ パフォーマンスが最適化されている
+- ✅ カスタマイズ可能な衝突検出アルゴリズム
+- ✅ 15分単位のスナップ機能を簡単に実装可能
 
-**使用する標準API:**
-- HTML5 Drag and Drop API (`draggable`, `onDragStart`, `onDrop`)
-- React Mouse Events (`onMouseDown`, `onMouseMove`, `onMouseUp`)
-- React Touch Events (`onTouchStart`, `onTouchMove`, `onTouchEnd`)
+**使用する@dnd-kit API:**
+- `DndContext` - ドラッグ&ドロップのコンテキスト
+- `useDraggable` - ドラッグ可能な要素
+- `useDroppable` - ドロップ可能な要素
+- `DragOverlay` - ドラッグ中のプレビュー
+- `PointerSensor` - マウス/タッチイベントセンサー
+- カスタムmodifiers - 15分単位のスナップ機能
+
+**追加で使用する標準API:**
+- React Mouse Events (`onMouseDown`, `onMouseMove`, `onMouseUp`) - 時間範囲選択とリサイズ用
+- React Touch Events (`onTouchStart`, `onTouchMove`, `onTouchEnd`) - モバイル対応用
 - React State Management (`useState`, `useRef`, `useCallback`)
 
 ## Migration Strategy

@@ -17,13 +17,14 @@ import {
 
 /**
  * 全協力会社を取得（サーバー側）
+ * パフォーマンス最適化：必要なフィールドのみを取得
  */
 export async function getAllPartnerCompanies(): Promise<PartnerCompany[]> {
   const supabase = await createServerClient();
 
   const { data, error } = await supabase
     .from("partner_companies_kiro_nextjs")
-    .select("*")
+    .select("id, name, contact_info, created_at")
     .order("name", { ascending: true });
 
   if (error) {

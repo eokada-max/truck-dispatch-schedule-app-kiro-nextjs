@@ -33,6 +33,9 @@ interface ScheduleFormProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: ScheduleFormData) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
+  initialDate?: string;
+  initialStartTime?: string;
+  initialEndTime?: string;
 }
 
 /**
@@ -47,6 +50,9 @@ export function ScheduleForm({
   onOpenChange,
   onSubmit,
   onDelete,
+  initialDate,
+  initialStartTime,
+  initialEndTime,
 }: ScheduleFormProps) {
   const isEditMode = !!schedule;
 
@@ -67,12 +73,12 @@ export function ScheduleForm({
     }
 
     // 新規作成モードの場合はデフォルト値を計算
-    const today = formatDate(getToday());
+    const today = initialDate || formatDate(getToday());
     const currentTime = getCurrentTime();
-    const roundedStartTime = roundTime(currentTime, 15); // 15分単位で丸める
+    const roundedStartTime = initialStartTime || roundTime(currentTime, 15); // 15分単位で丸める
     const startMinutes = timeToMinutes(roundedStartTime);
     const endMinutes = startMinutes + 60; // 開始時間 + 1時間
-    const defaultEndTime = minutesToTime(endMinutes);
+    const defaultEndTime = initialEndTime || minutesToTime(endMinutes);
 
     return {
       eventDate: today,
@@ -84,7 +90,7 @@ export function ScheduleForm({
       clientId: "",
       driverId: "",
     };
-  }, [schedule]);
+  }, [schedule, initialDate, initialStartTime, initialEndTime]);
 
   // フォーム状態
   const [formData, setFormData] = useState<ScheduleFormData>(defaultValues);

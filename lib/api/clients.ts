@@ -9,13 +9,14 @@ import { toClient, toClientInsert, toClientUpdate } from "@/lib/utils/typeConver
 
 /**
  * 全クライアントを取得（サーバー側）
+ * パフォーマンス最適化：必要なフィールドのみを取得
  */
 export async function getAllClients(): Promise<Client[]> {
   const supabase = await createServerClient();
 
   const { data, error } = await supabase
     .from("clients_kiro_nextjs")
-    .select("*")
+    .select("id, name, contact_info, created_at")
     .order("name", { ascending: true });
 
   if (error) {
