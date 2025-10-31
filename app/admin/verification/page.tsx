@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { verifyDataLoaded, type DataVerificationResult } from '@/lib/api/verification';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
@@ -250,12 +251,12 @@ export default function VerificationPage() {
                   >
                     → スケジュール管理ページで確認
                   </a>
-                  <a 
+                  <Link 
                     href="/" 
                     className="block text-sm text-blue-600 hover:text-blue-800 hover:underline"
                   >
                     → トップページに戻る
-                  </a>
+                  </Link>
                 </div>
               </div>
             )}
