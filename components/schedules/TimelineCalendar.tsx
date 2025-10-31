@@ -144,55 +144,64 @@ export function TimelineCalendar({
         </div>
 
         {/* タイムラインボディ */}
-        <div className="relative">
-          {timeSlots.map((timeSlot, index) => (
-            <div key={timeSlot} className="flex border-b last:border-b-0">
-              {/* 時間軸 */}
-              <div className="w-20 flex-shrink-0 border-r p-2 text-sm text-muted-foreground">
+        <div className="flex">
+          {/* 時間軸列 */}
+          <div className="w-20 flex-shrink-0 border-r">
+            {timeSlots.map((timeSlot) => (
+              <div key={timeSlot} className="border-b last:border-b-0 p-2 text-sm text-muted-foreground min-h-[60px]">
                 {timeSlot}
               </div>
+            ))}
+          </div>
 
-              {/* 日付ごとのセル */}
-              {dates.map((date) => {
-                const dateStr = formatDate(date);
-                const daySchedules = schedulesByDate.get(dateStr) || [];
-                
-                return (
+          {/* 日付ごとの列 */}
+          {dates.map((date) => {
+            const dateStr = formatDate(date);
+            const daySchedules = schedulesByDate.get(dateStr) || [];
+            
+            return (
+              <div
+                key={date.toISOString()}
+                className="w-48 flex-shrink-0 border-r last:border-r-0 relative"
+              >
+                {/* 時間スロットの背景グリッド */}
+                {timeSlots.map((timeSlot) => (
                   <div
-                    key={`${date.toISOString()}-${timeSlot}`}
-                    className="w-48 flex-shrink-0 border-r last:border-r-0 min-h-[60px] relative"
-                  >
-                    {/* 最初の時間スロットにのみスケジュールカードを配置 */}
-                    {index === 0 && daySchedules.map((schedule) => {
-                      const { top, height } = calculateSchedulePosition(schedule);
-                      const clientName = schedule.clientId ? clientsMap.get(schedule.clientId)?.name : undefined;
-                      const driverName = schedule.driverId ? driversMap.get(schedule.driverId)?.name : undefined;
-                      
-                      return (
-                        <div
-                          key={schedule.id}
-                          className="absolute"
-                          style={{
-                            top: `${top}px`,
-                            height: `${height}px`,
-                            left: 0,
-                            right: 0,
-                          }}
-                        >
-                          <ScheduleCard
-                            schedule={schedule}
-                            clientName={clientName}
-                            driverName={driverName}
-                            onClick={() => onScheduleClick?.(schedule)}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                    key={timeSlot}
+                    className="border-b last:border-b-0 min-h-[60px]"
+                  />
+                ))}
+
+                {/* スケジュールカードを絶対配置 */}
+                {daySchedules.map((schedule) => {
+                  const { top, height } = calculateSchedulePosition(schedule);
+                  const clientName = schedule.clientId ? clientsMap.get(schedule.clientId)?.name : undefined;
+                  const driverName = schedule.driverId ? driversMap.get(schedule.driverId)?.name : undefined;
+                  
+                  return (
+                    <div
+                      key={schedule.id}
+                      className="absolute"
+                      style={{
+                        top: `${top}px`,
+                        height: `${height}px`,
+                        left: 0,
+                        right: 0,
+                        zIndex: 10,
+                      }}
+                    >
+                      <ScheduleCard
+                        schedule={schedule}
+                        clientName={clientName}
+                        driverName={driverName}
+                        onClick={() => onScheduleClick?.(schedule)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       </div>
       </div>
