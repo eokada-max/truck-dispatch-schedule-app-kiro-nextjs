@@ -129,6 +129,38 @@ export function SchedulesClient({
     }
   };
 
+  // スケジュール更新ハンドラー（ドラッグ&ドロップ用）
+  const handleScheduleUpdate = async (scheduleId: string, updates: Partial<Schedule>) => {
+    try {
+      const supabase = createClient();
+      
+      // キャメルケースをスネークケースに変換
+      const dbUpdates: any = {};
+      if (updates.eventDate !== undefined) dbUpdates.event_date = updates.eventDate;
+      if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
+      if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
+      if (updates.title !== undefined) dbUpdates.title = updates.title;
+      if (updates.destinationAddress !== undefined) dbUpdates.destination_address = updates.destinationAddress;
+      if (updates.content !== undefined) dbUpdates.content = updates.content;
+      if (updates.clientId !== undefined) dbUpdates.client_id = updates.clientId;
+      if (updates.driverId !== undefined) dbUpdates.driver_id = updates.driverId;
+      
+      const { error } = await supabase
+        .from("schedules_kiro_nextjs")
+        .update(dbUpdates)
+        .eq("id", scheduleId);
+      
+      if (error) throw error;
+      
+      toast.success("スケジュールを移動しました");
+      router.refresh();
+    } catch (error) {
+      const message = getErrorMessage(error);
+      toast.error(`移動に失敗しました: ${message}`);
+      throw error;
+    }
+  };
+
   return (
     <>
       {/* ツールバー */}
@@ -160,6 +192,7 @@ export function SchedulesClient({
           startDate={startDate}
           endDate={endDate}
           onScheduleClick={handleScheduleClick}
+          onScheduleUpdate={handleScheduleUpdate}
         />
       </main>
 

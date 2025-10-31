@@ -16,10 +16,15 @@ interface ScheduleCardProps {
  * タイムライン上の個別スケジュール表示
  */
 export function ScheduleCard({ schedule, clientName, driverName, onClick }: ScheduleCardProps) {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClick?.();
+  };
+  
   return (
     <div
-      onClick={onClick}
-      className="absolute inset-x-1 bg-primary/10 border border-primary/30 rounded p-2 cursor-pointer hover:bg-primary/20 transition-colors overflow-hidden"
+      onClick={handleClick}
+      className="absolute inset-x-1 bg-primary/10 border border-primary/30 rounded p-2 hover:bg-primary/20 transition-colors overflow-hidden"
       style={{
         // 高さは親コンポーネントで計算して設定
         top: 0,

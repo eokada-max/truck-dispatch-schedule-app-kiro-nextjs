@@ -525,15 +525,19 @@ const handleTouchMove = (e: React.TouchEvent) => {
 
 ### 新規ライブラリ
 
-```json
-{
-  "@dnd-kit/core": "^6.0.0",
-  "@dnd-kit/sortable": "^7.0.0",
-  "@dnd-kit/utilities": "^3.2.0"
-}
-```
+**なし** - HTML5 Drag and Drop APIとReactの標準機能のみを使用します。
 
-**注**: @dnd-kitは、React向けの軽量で柔軟なドラッグ&ドロップライブラリです。アクセシビリティとパフォーマンスに優れています。
+**理由:**
+- ✅ 依存関係を増やさない
+- ✅ バンドルサイズを小さく保つ
+- ✅ カスタマイズの自由度が高い
+- ✅ Next.js/Reactの標準機能で十分実装可能
+
+**使用する標準API:**
+- HTML5 Drag and Drop API (`draggable`, `onDragStart`, `onDrop`)
+- React Mouse Events (`onMouseDown`, `onMouseMove`, `onMouseUp`)
+- React Touch Events (`onTouchStart`, `onTouchMove`, `onTouchEnd`)
+- React State Management (`useState`, `useRef`, `useCallback`)
 
 ## Migration Strategy
 

@@ -2,112 +2,99 @@
 
 ## Phase 1: ドラッグ&ドロップ基本機能
 
-- [ ] 1. 依存関係のインストールと設定
-  - `@dnd-kit/core`、`@dnd-kit/sortable`、`@dnd-kit/utilities`をインストールする
-  - DndContextプロバイダーをTimelineCalendarに追加する
-  - _Requirements: 1.1_
-
-- [ ] 2. DraggableScheduleCardコンポーネントの作成
-- [ ] 2.1 基本的なドラッグ機能を実装する
+- [ ] 1. DraggableScheduleCardコンポーネントの作成
+- [ ] 1.1 基本的なドラッグ機能を実装する
   - `components/schedules/DraggableScheduleCard.tsx`を作成する
-  - useDraggableフックを使用してドラッグ可能にする
+  - HTML5 Drag and Drop API（draggable属性、onDragStart）を使用する
   - ドラッグ中の視覚的フィードバック（opacity: 0.5）を実装する
   - _Requirements: 1.1, 1.2_
 
-- [ ] 2.2 ドラッグデータの管理を実装する
-  - スケジュール情報をドラッグデータに含める
+- [ ] 1.2 ドラッグデータの管理を実装する
+  - e.dataTransfer.setDataでスケジュール情報を設定する
   - ドラッグ開始時のコールバックを実装する
   - _Requirements: 1.1_
 
-- [ ] 3. DropZoneコンポーネントの作成
-- [ ] 3.1 ドロップ可能エリアを実装する
-  - `components/schedules/DropZone.tsx`を作成する
-  - useDroppableフックを使用してドロップ可能にする
+- [ ] 2. TimelineCalendarにドロップ機能を追加
+- [ ] 2.1 ドロップ可能エリアを実装する
+  - 各タイムスロットにonDragOver、onDropイベントを追加する
   - ドラッグオーバー時のハイライト表示を実装する
   - _Requirements: 1.2, 1.3_
 
-- [ ] 3.2 ドロップ処理を実装する
+- [ ] 2.2 ドロップ処理を実装する
+  - e.dataTransfer.getDataでスケジュール情報を取得する
+  - マウス位置から日付と時間を計算する
   - ドロップ時にスケジュールの日付と時間を更新する
   - 無効なドロップ位置の処理を実装する
   - _Requirements: 1.3, 1.4_
 
-- [ ] 4. TimelineCalendarの更新
-- [ ] 4.1 DndContextを統合する
-  - TimelineCalendarにDndContextを追加する
-  - ドラッグ&ドロップイベントハンドラーを実装する
-  - _Requirements: 1.1, 1.2, 1.3_
-
-- [ ] 4.2 スケジュール更新ロジックを実装する
+- [ ] 3. スケジュール更新ロジックの実装
+- [ ] 3.1 データベース更新を実装する
   - ドロップ時にSupabaseを更新する
   - 楽観的UI更新を実装する
   - エラーハンドリングを実装する
   - _Requirements: 1.3, 1.5_
 
-- [ ] 5. 視覚的フィードバックの実装
-- [ ] 5.1 ドラッグ中のプレビューを実装する
+- [ ] 4. 視覚的フィードバックの実装
+- [ ] 4.1 ドラッグ中のプレビューを実装する
   - ドラッグ中のスケジュールカードのスタイルを調整する
   - ドロップターゲットインジケーターを表示する
   - _Requirements: 4.1, 4.2_
 
-- [ ] 5.2 ドロップ位置のハイライトを実装する
+- [ ] 4.2 ドロップ位置のハイライトを実装する
   - 有効なドロップ位置を緑色でハイライトする
   - 無効なドロップ位置を赤色で表示する
   - _Requirements: 4.3, 4.4_
 
 ## Phase 2: 時間範囲選択機能
 
-- [ ] 6. TimeSlotSelectorコンポーネントの作成
-- [ ] 6.1 マウスイベントハンドラーを実装する
-  - `components/schedules/TimeSlotSelector.tsx`を作成する
-  - マウスダウン、マウスムーブ、マウスアップイベントを処理する
+- [ ] 5. TimelineCalendarに時間範囲選択を追加
+- [ ] 5.1 マウスイベントハンドラーを実装する
+  - onMouseDown、onMouseMove、onMouseUpイベントを追加する
   - スケジュールカード上でのクリックを無視する
+  - useStateで選択状態を管理する
   - _Requirements: 2.1, 2.5_
 
-- [ ] 6.2 選択範囲の表示を実装する
-  - 選択中の矩形を表示する（青い半透明）
+- [ ] 5.2 選択範囲の表示を実装する
+  - 選択中の矩形を表示する（青い半透明のdiv）
   - リアルタイムで選択範囲を更新する
+  - CSSで位置とサイズを計算する
   - _Requirements: 2.1, 2.2_
 
-- [ ] 6.3 時間計算ロジックを実装する
-  - マウス位置から時間を計算する
+- [ ] 5.3 時間計算ロジックを実装する
+  - マウス位置（clientY）から時間を計算する
   - 15分単位にスナップする
   - 最小選択時間（15分）をチェックする
   - _Requirements: 2.4_
 
-- [ ] 7. フォーム連携の実装
-- [ ] 7.1 選択完了時の処理を実装する
+- [ ] 6. フォーム連携の実装
+- [ ] 6.1 選択完了時の処理を実装する
   - 選択範囲から日付と時間を抽出する
   - スケジュール作成フォームを開く
   - 日付と時間を自動入力する
   - _Requirements: 2.3, 2.4_
 
-- [ ] 7.2 SchedulesClientの更新
-  - TimeSlotSelectorを統合する
-  - 選択完了時のコールバックを実装する
+- [ ] 6.2 SchedulesClientの更新
+  - 時間範囲選択のコールバックを実装する
+  - フォームに選択した日付と時間を渡す
   - _Requirements: 2.3_
 
 ## Phase 3: リサイズ機能
 
-- [ ] 8. ResizeHandlesコンポーネントの作成
-- [ ] 8.1 リサイズハンドルのUI を実装する
-  - `components/schedules/ResizeHandles.tsx`を作成する
-  - 上端と下端にハンドル領域を追加する
-  - ホバー時のカーソル変更を実装する
+- [ ] 7. DraggableScheduleCardにリサイズ機能を追加
+- [ ] 7.1 リサイズハンドルのUIを実装する
+  - 上端と下端に8pxの透明なハンドル領域を追加する
+  - ホバー時にカーソルを変更する（cursor: ns-resize）
+  - CSSで絶対配置する
   - _Requirements: 3.1_
 
-- [ ] 8.2 リサイズロジックを実装する
-  - マウスダウンでリサイズモード開始
-  - マウスムーブで時間を計算する
-  - 15分単位にスナップする
+- [ ] 7.2 リサイズロジックを実装する
+  - onMouseDownでリサイズモード開始
+  - onMouseMoveで時間を計算する（15分単位）
+  - onMouseUpでリサイズ完了
+  - リサイズとドラッグの競合を防ぐ（e.stopPropagation）
   - _Requirements: 3.2, 3.3, 3.4_
 
-- [ ] 9. DraggableScheduleCardへの統合
-- [ ] 9.1 ResizeHandlesを追加する
-  - DraggableScheduleCardにResizeHandlesを統合する
-  - リサイズとドラッグの競合を防ぐ
-  - _Requirements: 3.1, 3.2, 3.3_
-
-- [ ] 9.2 リサイズ完了時の処理を実装する
+- [ ] 7.3 リサイズ完了時の処理を実装する
   - リサイズ完了時にSupabaseを更新する
   - 楽観的UI更新を実装する
   - _Requirements: 3.5_

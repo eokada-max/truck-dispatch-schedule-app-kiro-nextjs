@@ -35,10 +35,15 @@ export function Navigation() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* ロゴ */}
-          <Link href="/" className="flex items-center gap-2 font-bold text-lg">
+          <Link href="/" className="flex items-center gap-2">
             <Truck className="w-6 h-6 text-primary" />
-            <span className="hidden sm:inline">配送スケジュール管理</span>
-            <span className="sm:hidden">配送管理</span>
+            <div className="flex flex-col">
+              <span className="font-bold text-lg leading-tight">
+                <span className="hidden sm:inline">配送スケジュール管理</span>
+                <span className="sm:hidden">配送管理</span>
+              </span>
+              <span className="text-xs text-muted-foreground">v1.0.0-dnd</span>
+            </div>
           </Link>
 
           {/* デスクトップメニュー */}
