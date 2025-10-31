@@ -131,29 +131,25 @@ export function SchedulesClient({
 
   return (
     <>
-      {/* ヘッダー */}
-      <header className="border-b bg-card sticky top-0 z-10">
+      {/* ツールバー */}
+      <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-3 md:py-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-4">
-            <h1 className="text-xl md:text-2xl font-bold">スケジュール管理</h1>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4 justify-between">
+            <DateNavigation
+              currentDate={currentDate}
+              onPrevious={handlePrevious}
+              onNext={handleNext}
+              onToday={handleToday}
+            />
             
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4 w-full sm:w-auto">
-              <DateNavigation
-                currentDate={currentDate}
-                onPrevious={handlePrevious}
-                onNext={handleNext}
-                onToday={handleToday}
-              />
-              
-              <Button onClick={handleCreateClick} className="w-full sm:w-auto">
-                <Plus className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">スケジュール登録</span>
-                <span className="sm:hidden">登録</span>
-              </Button>
-            </div>
+            <Button onClick={handleCreateClick} className="w-full sm:w-auto">
+              <Plus className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">スケジュール登録</span>
+              <span className="sm:hidden">登録</span>
+            </Button>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* メインコンテンツ */}
       <main className="container mx-auto px-4 py-6">

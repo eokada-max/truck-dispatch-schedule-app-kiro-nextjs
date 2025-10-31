@@ -25,6 +25,9 @@ export async function getAllDrivers(): Promise<Driver[]> {
   return data.map(toDriver);
 }
 
+// エイリアス
+export const getDrivers = getAllDrivers;
+
 /**
  * 自社ドライバーのみを取得（サーバー側）
  */

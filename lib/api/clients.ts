@@ -25,6 +25,9 @@ export async function getAllClients(): Promise<Client[]> {
   return data.map(toClient);
 }
 
+// エイリアス
+export const getClients = getAllClients;
+
 /**
  * IDでクライアントを取得（サーバー側）
  */

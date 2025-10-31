@@ -33,6 +33,9 @@ export async function getAllPartnerCompanies(): Promise<PartnerCompany[]> {
   return data.map(toPartnerCompany);
 }
 
+// エイリアス
+export const getPartnerCompanies = getAllPartnerCompanies;
+
 /**
  * IDで協力会社を取得（サーバー側）
  */
