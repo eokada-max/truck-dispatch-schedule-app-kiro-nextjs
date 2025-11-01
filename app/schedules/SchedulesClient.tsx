@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, lazy, Suspense, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Schedule } from "@/types/Schedule";
 import type { Client } from "@/types/Client";
@@ -44,7 +43,6 @@ export function SchedulesClient({
   drivers,
   initialStartDate,
 }: SchedulesClientProps) {
-  const router = useRouter();
   const [currentDate, setCurrentDate] = useState(initialStartDate);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | undefined>();
@@ -115,19 +113,16 @@ export function SchedulesClient({
   // 前へボタンのハンドラー
   const handlePrevious = () => {
     setCurrentDate(addDays(currentDate, -7));
-    router.refresh();
   };
 
   // 次へボタンのハンドラー
   const handleNext = () => {
     setCurrentDate(addDays(currentDate, 7));
-    router.refresh();
   };
 
   // 今日ボタンのハンドラー
   const handleToday = () => {
     setCurrentDate(getToday());
-    router.refresh();
   };
 
   // フォーム送信ハンドラー
@@ -167,7 +162,7 @@ export function SchedulesClient({
         
         toast.success("スケジュールを登録しました");
       }
-      router.refresh();
+      // router.refresh()を削除：リアルタイム同期で自動更新される
     } catch (error) {
       const message = getErrorMessage(error);
       toast.error(`操作に失敗しました: ${message}`);
@@ -190,7 +185,7 @@ export function SchedulesClient({
       
       if (error) throw error;
       toast.success("スケジュールを削除しました");
-      router.refresh();
+      // router.refresh()を削除：リアルタイム同期で自動更新される
     } catch (error) {
       const message = getErrorMessage(error);
       toast.error(`削除に失敗しました: ${message}`);
@@ -201,9 +196,14 @@ export function SchedulesClient({
   // スケジュール更新ハンドラー（ドラッグ&ドロップ用）
   const handleScheduleUpdate = async (scheduleId: string, updates: Partial<Schedule>) => {
     try {
+      // 楽観的UI更新：即座にローカル状態を更新
+      setSchedules(prev =>
+        prev.map(s => s.id === scheduleId ? { ...s, ...updates } : s)
+      );
+      
       const supabase = createClient();
       
-      // 自分の操作を記録
+      // 自分の操作を記録（リアルタイム更新をスキップするため）
       recordMyOperation(scheduleId, 'UPDATE');
       
       // キャメルケースをスネークケースに変換
@@ -222,10 +222,19 @@ export function SchedulesClient({
         .update(dbUpdates)
         .eq("id", scheduleId);
       
-      if (error) throw error;
+      if (error) {
+        // エラー時は元に戻す
+        const originalSchedule = schedules.find(s => s.id === scheduleId);
+        if (originalSchedule) {
+          setSchedules(prev =>
+            prev.map(s => s.id === scheduleId ? originalSchedule : s)
+          );
+        }
+        throw error;
+      }
       
+      // 成功時はrouter.refresh()を呼ばない（リアルタイム同期で自動更新される）
       // toast.success("スケジュールを移動しました"); // TimelineCalendarで表示するため削除
-      router.refresh();
     } catch (error) {
       const message = getErrorMessage(error);
       toast.error(`移動に失敗しました: ${message}`);
