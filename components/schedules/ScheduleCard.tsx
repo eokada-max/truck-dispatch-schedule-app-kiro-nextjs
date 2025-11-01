@@ -11,6 +11,7 @@ interface ScheduleCardProps {
   driverName?: string;
   onClick?: () => void;
   isConflicting?: boolean;
+  isKeyboardMoving?: boolean;
 }
 
 /**
@@ -18,15 +19,17 @@ interface ScheduleCardProps {
  * タイムライン上の個別スケジュール表示
  * React.memoでメモ化してパフォーマンスを最適化
  */
-export const ScheduleCard = memo(function ScheduleCard({ schedule, clientName, driverName, onClick, isConflicting = false }: ScheduleCardProps) {
+export const ScheduleCard = memo(function ScheduleCard({ schedule, clientName, driverName, onClick, isConflicting = false, isKeyboardMoving = false }: ScheduleCardProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onClick?.();
   };
   
   const cardClassName = isConflicting
-    ? "absolute bg-destructive/20 border-2 border-destructive rounded p-1.5 hover:bg-destructive/30 transition-colors overflow-hidden"
-    : "absolute bg-primary/10 border border-primary/30 rounded p-1.5 hover:bg-primary/20 transition-colors overflow-hidden";
+    ? "absolute bg-destructive/20 border-2 border-destructive rounded p-1.5 hover:bg-destructive/30 active:bg-destructive/40 transition-colors overflow-hidden touch-manipulation"
+    : isKeyboardMoving
+    ? "absolute bg-primary/30 border-2 border-primary rounded p-1.5 transition-colors overflow-hidden touch-manipulation"
+    : "absolute bg-primary/10 border border-primary/30 rounded p-1.5 hover:bg-primary/20 active:bg-primary/30 transition-colors overflow-hidden touch-manipulation";
   
   return (
     <div

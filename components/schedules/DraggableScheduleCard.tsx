@@ -12,6 +12,7 @@ interface DraggableScheduleCardProps {
   driverName?: string;
   onClick?: () => void;
   isConflicting?: boolean;
+  isKeyboardMoving?: boolean;
 }
 
 /**
@@ -25,6 +26,7 @@ export const DraggableScheduleCard = memo(function DraggableScheduleCard({
   driverName,
   onClick,
   isConflicting = false,
+  isKeyboardMoving = false,
 }: DraggableScheduleCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: schedule.id,
@@ -45,7 +47,7 @@ export const DraggableScheduleCard = memo(function DraggableScheduleCard({
       style={style}
       {...listeners}
       {...attributes}
-      className={`relative h-full ${isConflicting ? 'animate-pulse' : ''}`}
+      className={`relative h-full ${isConflicting ? 'animate-pulse' : ''} ${isKeyboardMoving ? 'opacity-80' : ''}`}
     >
       <ScheduleCard
         schedule={schedule}
@@ -53,6 +55,7 @@ export const DraggableScheduleCard = memo(function DraggableScheduleCard({
         driverName={driverName}
         onClick={onClick}
         isConflicting={isConflicting}
+        isKeyboardMoving={isKeyboardMoving}
       />
     </div>
   );

@@ -25,9 +25,12 @@ interface DroppableColumnProps {
   driversMap: Map<string, Driver>;
   calculateSchedulePosition: (schedule: Schedule) => { top: number; height: number };
   onScheduleClick?: (schedule: Schedule) => void;
+  onKeyboardMoveStart?: (schedule: Schedule) => void;
   onMouseDown: (e: React.MouseEvent, date: string, columnElement: HTMLElement) => void;
+  onTouchStart?: (e: React.TouchEvent, date: string, columnElement: HTMLElement) => void;
   selectionState: SelectionState;
   conflictIds?: Set<string>;
+  keyboardMovingScheduleId?: string | null;
 }
 
 /**
@@ -43,9 +46,12 @@ export const DroppableColumn = memo(function DroppableColumn({
   driversMap,
   calculateSchedulePosition,
   onScheduleClick,
+  onKeyboardMoveStart,
   onMouseDown,
+  onTouchStart,
   selectionState,
   conflictIds = new Set(),
+  keyboardMovingScheduleId = null,
 }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id,
@@ -87,6 +93,12 @@ export const DroppableColumn = memo(function DroppableColumn({
         const columnElement = e.currentTarget;
         onMouseDown(e, date, columnElement);
       }}
+      onTouchStart={(e) => {
+        if (onTouchStart) {
+          const columnElement = e.currentTarget;
+          onTouchStart(e, date, columnElement);
+        }
+      }}
     >
       {/* 時間スロットの背景グリッド */}
       <TimeSlotGrid timeSlots={timeSlots} />
@@ -120,7 +132,9 @@ export const DroppableColumn = memo(function DroppableColumn({
             top={top}
             height={height}
             onClick={() => onScheduleClick?.(schedule)}
+            onKeyboardMoveStart={onKeyboardMoveStart}
             isConflicting={isConflicting}
+            isKeyboardMoving={keyboardMovingScheduleId === schedule.id}
             layoutStyle={layoutStyle}
           />
         );

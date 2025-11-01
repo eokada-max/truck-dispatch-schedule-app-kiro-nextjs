@@ -16,6 +16,7 @@ import { toScheduleInsert, toScheduleUpdate } from "@/lib/utils/typeConverters";
 import { getErrorMessage } from "@/lib/utils/errorHandler";
 import type { ScheduleFormData } from "@/types/Schedule";
 import { cache } from "@/lib/utils/cache";
+import { useRealtimeSchedules } from "@/lib/hooks/useRealtimeSchedules";
 
 // 重いコンポーネントを動的インポート（遅延ロード）
 const TimelineCalendar = lazy(() =>
@@ -50,10 +51,28 @@ export function SchedulesClient({
   const [prefilledDate, setPrefilledDate] = useState<string | undefined>();
   const [prefilledStartTime, setPrefilledStartTime] = useState<string | undefined>();
   const [prefilledEndTime, setPrefilledEndTime] = useState<string | undefined>();
+  
+  // リアルタイムスケジュール管理
+  const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules);
 
   // 表示期間を計算（currentDateから7日間）
   const startDate = currentDate;
   const endDate = addDays(currentDate, 6);
+  
+  // リアルタイム同期を有効化
+  useRealtimeSchedules({
+    onInsert: (newSchedule) => {
+      setSchedules(prev => [...prev, newSchedule]);
+    },
+    onUpdate: (updatedSchedule) => {
+      setSchedules(prev =>
+        prev.map(s => s.id === updatedSchedule.id ? updatedSchedule : s)
+      );
+    },
+    onDelete: (deletedId) => {
+      setSchedules(prev => prev.filter(s => s.id !== deletedId));
+    },
+  });
 
   // パフォーマンス最適化：クライアント、ドライバーをキャッシュ
   useEffect(() => {
@@ -186,7 +205,7 @@ export function SchedulesClient({
       
       if (error) throw error;
       
-      toast.success("スケジュールを移動しました");
+      // toast.success("スケジュールを移動しました"); // TimelineCalendarで表示するため削除
       router.refresh();
     } catch (error) {
       const message = getErrorMessage(error);
@@ -226,7 +245,7 @@ export function SchedulesClient({
           </div>
         }>
           <TimelineCalendar
-            schedules={initialSchedules}
+            schedules={schedules}
             clients={clients}
             drivers={drivers}
             startDate={startDate}

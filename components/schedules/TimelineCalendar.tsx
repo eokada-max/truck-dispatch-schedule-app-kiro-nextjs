@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import {
   DndContext,
   DragEndEvent,
   DragOverlay,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   pointerWithin,
@@ -17,6 +18,9 @@ import { generateDateRange, formatDateShort, getWeekdayJa, formatDate } from "@/
 import { generateTimeSlots, timeToMinutes } from "@/lib/utils/timeUtils";
 import { throttle } from "@/lib/utils/performanceUtils";
 import { checkConflict, type ConflictCheck } from "@/lib/utils/conflictDetection";
+import { validateScheduleUpdate } from "@/lib/utils/scheduleValidation";
+import { useUndoManager } from "@/lib/utils/undoManager";
+import { toast } from "sonner";
 import { ScheduleCard } from "./ScheduleCard";
 import { DroppableColumn } from "./DroppableColumn";
 import { ConflictWarningDialog } from "./ConflictWarningDialog";
@@ -76,17 +80,162 @@ export function TimelineCalendar({
   
   // ドラッグ中の競合スケジュールID（ハイライト用）
   const [dragConflictIds, setDragConflictIds] = useState<Set<string>>(new Set());
+  
+  // 処理中フラグ（二重実行を防ぐ）
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // キーボード移動モードの状態
+  const [keyboardMoveMode, setKeyboardMoveMode] = useState<{
+    isActive: boolean;
+    scheduleId: string | null;
+    originalDate: string | null;
+    originalStartTime: string | null;
+    originalEndTime: string | null;
+    currentDate: string | null;
+    currentStartTime: string | null;
+    currentEndTime: string | null;
+  }>({
+    isActive: false,
+    scheduleId: null,
+    originalDate: null,
+    originalStartTime: null,
+    originalEndTime: null,
+    currentDate: null,
+    currentStartTime: null,
+    currentEndTime: null,
+  });
+  
+  // Undo Manager
+  const { recordOperation, undo, canUndo } = useUndoManager();
 
   // schedulesが変更されたら、optimisticSchedulesも更新
   useMemo(() => {
     setOptimisticSchedules(schedules);
   }, [schedules]);
 
-  // ドラッグセンサーの設定
+  // キーボードイベントハンドラー
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escapeキーでドラッグまたはキーボード移動をキャンセル
+      if (e.key === 'Escape') {
+        if (activeSchedule) {
+          setActiveSchedule(null);
+          setDragConflictIds(new Set());
+        }
+        if (keyboardMoveMode.isActive) {
+          // キーボード移動モードをキャンセル（元の位置に戻す）
+          setKeyboardMoveMode({
+            isActive: false,
+            scheduleId: null,
+            originalDate: null,
+            originalStartTime: null,
+            originalEndTime: null,
+            currentDate: null,
+            currentStartTime: null,
+            currentEndTime: null,
+          });
+          toast.info('移動をキャンセルしました', {
+            id: 'keyboard-cancel',
+            duration: 1500,
+          });
+        }
+      }
+      
+      // キーボード移動モード中の矢印キー操作
+      if (keyboardMoveMode.isActive && keyboardMoveMode.scheduleId) {
+        const schedule = optimisticSchedules.find(s => s.id === keyboardMoveMode.scheduleId);
+        if (!schedule) return;
+        
+        const currentDate = keyboardMoveMode.currentDate || schedule.eventDate;
+        const currentStartTime = keyboardMoveMode.currentStartTime || schedule.startTime;
+        const currentEndTime = keyboardMoveMode.currentEndTime || schedule.endTime;
+        
+        let newDate = currentDate;
+        let newStartTime = currentStartTime;
+        let newEndTime = currentEndTime;
+        
+        const startMinutes = timeToMinutes(currentStartTime);
+        const endMinutes = timeToMinutes(currentEndTime);
+        const duration = endMinutes - startMinutes;
+        
+        switch (e.key) {
+          case 'ArrowUp':
+            // 15分前に移動
+            e.preventDefault();
+            const newStartMinutesUp = Math.max(9 * 60, startMinutes - 15);
+            newStartTime = `${String(Math.floor(newStartMinutesUp / 60)).padStart(2, '0')}:${String(newStartMinutesUp % 60).padStart(2, '0')}:00`;
+            newEndTime = `${String(Math.floor((newStartMinutesUp + duration) / 60)).padStart(2, '0')}:${String((newStartMinutesUp + duration) % 60).padStart(2, '0')}:00`;
+            break;
+            
+          case 'ArrowDown':
+            // 15分後に移動
+            e.preventDefault();
+            const newStartMinutesDown = Math.min(23 * 60, startMinutes + 15);
+            newStartTime = `${String(Math.floor(newStartMinutesDown / 60)).padStart(2, '0')}:${String(newStartMinutesDown % 60).padStart(2, '0')}:00`;
+            newEndTime = `${String(Math.floor((newStartMinutesDown + duration) / 60)).padStart(2, '0')}:${String((newStartMinutesDown + duration) % 60).padStart(2, '0')}:00`;
+            break;
+            
+          case 'ArrowLeft':
+            // 1日前に移動
+            e.preventDefault();
+            const prevDate = new Date(currentDate);
+            prevDate.setDate(prevDate.getDate() - 1);
+            newDate = formatDate(prevDate);
+            break;
+            
+          case 'ArrowRight':
+            // 1日後に移動
+            e.preventDefault();
+            const nextDate = new Date(currentDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            newDate = formatDate(nextDate);
+            break;
+            
+          case 'Enter':
+            // 移動を確定
+            e.preventDefault();
+            handleKeyboardMoveConfirm();
+            return;
+        }
+        
+        // 状態を更新（矢印キーが押された場合）
+        if (e.key.startsWith('Arrow')) {
+          setKeyboardMoveMode(prev => ({
+            ...prev,
+            currentDate: newDate,
+            currentStartTime: newStartTime,
+            currentEndTime: newEndTime,
+          }));
+          
+          // 楽観的UI更新
+          setOptimisticSchedules(prev =>
+            prev.map(s =>
+              s.id === keyboardMoveMode.scheduleId
+                ? { ...s, eventDate: newDate, startTime: newStartTime, endTime: newEndTime }
+                : s
+            )
+          );
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeSchedule, keyboardMoveMode, optimisticSchedules]);
+
+  // ドラッグセンサーの設定（マウス＋タッチ対応）
   const sensors = useSensors(
+    // マウス用センサー
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // 8px移動したらドラッグ開始
+        distance: 8, // 8px移動したらドラッグ開始（誤操作防止）
+      },
+    }),
+    // タッチ用センサー（モバイル対応）
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250, // 250ms長押しでドラッグ開始
+        tolerance: 5, // 5px以内の移動は許容（誤操作防止）
       },
     })
   );
@@ -246,7 +395,12 @@ export function TimelineCalendar({
 
   // ドラッグ終了ハンドラー（useCallbackでメモ化）
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
-    console.log("Drag end event:", event);
+    // 二重実行を防ぐ
+    if (isProcessing) {
+      return;
+    }
+    
+    setIsProcessing(true);
     setActiveSchedule(null);
 
     const { active, over, delta } = event;
@@ -255,6 +409,7 @@ export function TimelineCalendar({
 
     if (!over || !active.data.current?.schedule) {
       console.log("No valid drop target or schedule data");
+      setIsProcessing(false);
       return;
     }
 
@@ -293,6 +448,18 @@ export function TimelineCalendar({
 
     // 変更がない場合は何もしない
     if (newDate === schedule.eventDate && newStartTime === schedule.startTime) {
+      setIsProcessing(false);
+      return;
+    }
+
+    // バリデーション
+    const validation = validateScheduleUpdate(schedule, newDate, newStartTime, newEndTime);
+    if (!validation.isValid) {
+      toast.error(`無効な操作: ${validation.errors.join(", ")}`, {
+        id: 'schedule-validation-error',
+        duration: 3000,
+      });
+      setIsProcessing(false);
       return;
     }
 
@@ -317,10 +484,27 @@ export function TimelineCalendar({
         },
       });
       setShowConflictDialog(true);
+      setIsProcessing(false);
       return;
     }
 
     // 競合がない場合は即座に更新
+    // 操作を記録（Undo用）
+    recordOperation(
+      'move',
+      schedule.id,
+      {
+        eventDate: schedule.eventDate,
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
+      },
+      {
+        eventDate: newDate,
+        startTime: newStartTime,
+        endTime: newEndTime,
+      }
+    );
+
     // 楽観的UI更新：即座にUIを更新
     setOptimisticSchedules(prev =>
       prev.map(s =>
@@ -338,18 +522,77 @@ export function TimelineCalendar({
           startTime: newStartTime,
           endTime: newEndTime,
         } as Partial<Schedule>);
+
+        // 成功メッセージに「元に戻す」ボタンを表示（5秒間表示）
+        toast.success('スケジュールを移動しました', {
+          id: 'schedule-move',
+          duration: 5000,
+          action: {
+            label: '元に戻す',
+            onClick: async () => {
+              const undoOp = undo();
+              if (undoOp && onScheduleUpdate) {
+                // 楽観的UI更新
+                setOptimisticSchedules(prev =>
+                  prev.map(s =>
+                    s.id === undoOp.scheduleId
+                      ? { ...s, ...undoOp.before }
+                      : s
+                  )
+                );
+                try {
+                  await onScheduleUpdate(undoOp.scheduleId, undoOp.before);
+                  toast.success('元に戻しました', { 
+                    id: 'schedule-undo',
+                    duration: 1500,
+                  });
+                } catch (error) {
+                  toast.error('元に戻せませんでした', { 
+                    id: 'schedule-undo-error',
+                    duration: 1500,
+                  });
+                  // エラーが発生したら再度更新
+                  setOptimisticSchedules(schedules);
+                }
+              }
+            },
+          },
+        });
       } catch (error) {
         // エラーが発生したら元に戻す
         setOptimisticSchedules(schedules);
+        toast.error('スケジュールの移動に失敗しました', {
+          id: 'schedule-error',
+        });
+      } finally {
+        setIsProcessing(false);
       }
     }
-  }, [onScheduleUpdate, schedules]);
+  }, [onScheduleUpdate, schedules, recordOperation, undo]);
 
   // 競合を承知で更新を続行
   const handleConflictConfirm = useCallback(async () => {
     if (!pendingUpdate || !onScheduleUpdate) {
       return;
     }
+
+    // 元のスケジュールを取得
+    const originalSchedule = schedules.find(s => s.id === pendingUpdate.scheduleId);
+    if (!originalSchedule) {
+      return;
+    }
+
+    // 操作を記録（Undo用）
+    recordOperation(
+      'move',
+      pendingUpdate.scheduleId,
+      {
+        eventDate: originalSchedule.eventDate,
+        startTime: originalSchedule.startTime,
+        endTime: originalSchedule.endTime,
+      },
+      pendingUpdate.updates
+    );
 
     // 楽観的UI更新
     setOptimisticSchedules(prev =>
@@ -362,17 +605,54 @@ export function TimelineCalendar({
 
     try {
       await onScheduleUpdate(pendingUpdate.scheduleId, pendingUpdate.updates);
+
+      // 成功メッセージに「元に戻す」ボタンを表示（5秒間表示）
+      toast.success('競合を承知でスケジュールを移動しました', {
+        id: 'schedule-move',
+        duration: 5000,
+        action: {
+          label: '元に戻す',
+          onClick: async () => {
+            const undoOp = undo();
+            if (undoOp && onScheduleUpdate) {
+              setOptimisticSchedules(prev =>
+                prev.map(s =>
+                  s.id === undoOp.scheduleId
+                    ? { ...s, ...undoOp.before }
+                    : s
+                )
+              );
+              try {
+                await onScheduleUpdate(undoOp.scheduleId, undoOp.before);
+                toast.success('元に戻しました', { 
+                  id: 'schedule-undo',
+                  duration: 1500,
+                });
+              } catch (error) {
+                toast.error('元に戻せませんでした', { 
+                  id: 'schedule-undo-error',
+                  duration: 1500,
+                });
+                setOptimisticSchedules(schedules);
+              }
+            }
+          },
+        },
+      });
     } catch (error) {
       // エラーが発生したら元に戻す
       setOptimisticSchedules(schedules);
+      toast.error('スケジュールの移動に失敗しました', {
+        id: 'schedule-error',
+      });
     }
 
     // 状態をリセット（競合ハイライトもクリア）
     setShowConflictDialog(false);
     setConflictCheck(null);
     setPendingUpdate(null);
-    setDragConflictIds(new Set()); // 🔧 追加: 赤いハイライトをクリア
-  }, [pendingUpdate, onScheduleUpdate, schedules]);
+    setDragConflictIds(new Set());
+  }, [pendingUpdate, onScheduleUpdate, schedules, recordOperation, undo]);
 
   // 競合ダイアログをキャンセル
   const handleConflictCancel = useCallback(() => {
@@ -381,6 +661,149 @@ export function TimelineCalendar({
     setPendingUpdate(null);
     setDragConflictIds(new Set()); // 🔧 追加: 赤いハイライトをクリア
   }, []);
+
+  // キーボード移動を開始
+  const handleKeyboardMoveStart = useCallback((schedule: Schedule) => {
+    setKeyboardMoveMode({
+      isActive: true,
+      scheduleId: schedule.id,
+      originalDate: schedule.eventDate,
+      originalStartTime: schedule.startTime,
+      originalEndTime: schedule.endTime,
+      currentDate: schedule.eventDate,
+      currentStartTime: schedule.startTime,
+      currentEndTime: schedule.endTime,
+    });
+    toast.info('矢印キーで移動、Enterで確定、Escapeでキャンセル', {
+      id: 'keyboard-move-start',
+      duration: 3000,
+    });
+  }, []);
+
+  // キーボード移動を確定
+  const handleKeyboardMoveConfirm = useCallback(async () => {
+    if (!keyboardMoveMode.isActive || !keyboardMoveMode.scheduleId || !onScheduleUpdate) {
+      return;
+    }
+
+    const schedule = schedules.find(s => s.id === keyboardMoveMode.scheduleId);
+    if (!schedule) return;
+
+    const newDate = keyboardMoveMode.currentDate || schedule.eventDate;
+    const newStartTime = keyboardMoveMode.currentStartTime || schedule.startTime;
+    const newEndTime = keyboardMoveMode.currentEndTime || schedule.endTime;
+
+    // 変更がない場合
+    if (newDate === schedule.eventDate && newStartTime === schedule.startTime) {
+      setKeyboardMoveMode({
+        isActive: false,
+        scheduleId: null,
+        originalDate: null,
+        originalStartTime: null,
+        originalEndTime: null,
+        currentDate: null,
+        currentStartTime: null,
+        currentEndTime: null,
+      });
+      return;
+    }
+
+    // バリデーション
+    const validation = validateScheduleUpdate(schedule, newDate, newStartTime, newEndTime);
+    if (!validation.isValid) {
+      toast.error(`無効な操作: ${validation.errors.join(", ")}`, {
+        id: 'keyboard-validation-error',
+        duration: 3000,
+      });
+      // 元の位置に戻す
+      setOptimisticSchedules(schedules);
+      setKeyboardMoveMode({
+        isActive: false,
+        scheduleId: null,
+        originalDate: null,
+        originalStartTime: null,
+        originalEndTime: null,
+        currentDate: null,
+        currentStartTime: null,
+        currentEndTime: null,
+      });
+      return;
+    }
+
+    // 操作を記録（Undo用）
+    recordOperation(
+      'move',
+      schedule.id,
+      {
+        eventDate: schedule.eventDate,
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
+      },
+      {
+        eventDate: newDate,
+        startTime: newStartTime,
+        endTime: newEndTime,
+      }
+    );
+
+    try {
+      await onScheduleUpdate(schedule.id, {
+        eventDate: newDate,
+        startTime: newStartTime,
+        endTime: newEndTime,
+      } as Partial<Schedule>);
+
+      toast.success('スケジュールを移動しました', {
+        id: 'keyboard-move-success',
+        duration: 5000,
+        action: {
+          label: '元に戻す',
+          onClick: async () => {
+            const undoOp = undo();
+            if (undoOp && onScheduleUpdate) {
+              setOptimisticSchedules(prev =>
+                prev.map(s =>
+                  s.id === undoOp.scheduleId
+                    ? { ...s, ...undoOp.before }
+                    : s
+                )
+              );
+              try {
+                await onScheduleUpdate(undoOp.scheduleId, undoOp.before);
+                toast.success('元に戻しました', { 
+                  id: 'keyboard-undo',
+                  duration: 1500,
+                });
+              } catch (error) {
+                toast.error('元に戻せませんでした', { 
+                  id: 'keyboard-undo-error',
+                  duration: 1500,
+                });
+                setOptimisticSchedules(schedules);
+              }
+            }
+          },
+        },
+      });
+    } catch (error) {
+      toast.error('スケジュールの移動に失敗しました', {
+        id: 'keyboard-move-error',
+      });
+      setOptimisticSchedules(schedules);
+    }
+
+    // キーボード移動モードを終了
+    setKeyboardMoveMode({
+      isActive: false,
+      scheduleId: null,
+      originalDate: null,
+      originalStartTime: null,
+      originalEndTime: null,
+      currentDate: null,
+      currentStartTime: null,
+      currentEndTime: null,
+    });
+  }, [keyboardMoveMode, schedules, onScheduleUpdate, recordOperation, undo]);
 
   // マウスダウンハンドラー（時間範囲選択開始）（useCallbackでメモ化）
   const handleMouseDown = useCallback((e: React.MouseEvent, date: string, columnElement: HTMLElement) => {
@@ -394,6 +817,23 @@ export function TimelineCalendar({
       startDate: date,
       startY: e.clientY,
       currentY: e.clientY,
+      columnElement,
+    });
+  }, []);
+
+  // タッチスタートハンドラー（モバイル対応）
+  const handleTouchStart = useCallback((e: React.TouchEvent, date: string, columnElement: HTMLElement) => {
+    // スケジュールカード上でのタッチは無視
+    if ((e.target as HTMLElement).closest('.schedule-card')) {
+      return;
+    }
+
+    const touch = e.touches[0];
+    setSelectionState({
+      isSelecting: true,
+      startDate: date,
+      startY: touch.clientY,
+      currentY: touch.clientY,
       columnElement,
     });
   }, []);
@@ -445,6 +885,22 @@ export function TimelineCalendar({
     [selectionState.isSelecting]
   );
 
+  // タッチムーブハンドラー（モバイル対応）
+  const handleTouchMove = useCallback(
+    throttle((e: React.TouchEvent) => {
+      if (!selectionState.isSelecting) {
+        return;
+      }
+
+      const touch = e.touches[0];
+      setSelectionState(prev => ({
+        ...prev,
+        currentY: touch.clientY,
+      }));
+    }, 16), // 16ms（約60fps）でスロットル
+    [selectionState.isSelecting]
+  );
+
   // マウスアップハンドラー（選択完了）（useCallbackでメモ化）
   const handleMouseUp = useCallback(() => {
     if (!selectionState.isSelecting || !selectionState.startDate || !selectionState.startY || !selectionState.currentY || !selectionState.columnElement) {
@@ -464,6 +920,54 @@ export function TimelineCalendar({
     // 移動量が5px以下の場合はクリックとみなす
     if (deltaY <= 5) {
       // クリック：1時間枠でフォームを開く
+      const { startTime, endTime } = calculateOneHourSlot(selectionState.startY, selectionState.columnElement);
+      if (onTimeRangeSelect) {
+        onTimeRangeSelect(selectionState.startDate, startTime, endTime);
+      }
+    } else {
+      // ドラッグ：選択範囲でフォームを開く
+      const startTime = calculateTimeFromY(Math.min(selectionState.startY, selectionState.currentY), selectionState.columnElement);
+      const endTime = calculateTimeFromY(Math.max(selectionState.startY, selectionState.currentY), selectionState.columnElement);
+
+      // 最小選択時間チェック（15分）
+      const startMinutes = timeToMinutes(startTime);
+      const endMinutes = timeToMinutes(endTime);
+      const duration = endMinutes - startMinutes;
+
+      if (duration >= 15 && onTimeRangeSelect) {
+        onTimeRangeSelect(selectionState.startDate, startTime, endTime);
+      }
+    }
+
+    // 選択状態をリセット
+    setSelectionState({
+      isSelecting: false,
+      startDate: null,
+      startY: null,
+      currentY: null,
+      columnElement: null,
+    });
+  }, [selectionState, onTimeRangeSelect, calculateOneHourSlot, calculateTimeFromY]);
+
+  // タッチエンドハンドラー（モバイル対応）
+  const handleTouchEnd = useCallback(() => {
+    if (!selectionState.isSelecting || !selectionState.startDate || !selectionState.startY || !selectionState.currentY || !selectionState.columnElement) {
+      setSelectionState({
+        isSelecting: false,
+        startDate: null,
+        startY: null,
+        currentY: null,
+        columnElement: null,
+      });
+      return;
+    }
+
+    // Y座標の移動量を計算
+    const deltaY = Math.abs(selectionState.currentY - selectionState.startY);
+
+    // 移動量が5px以下の場合はタップとみなす
+    if (deltaY <= 5) {
+      // タップ：1時間枠でフォームを開く
       const { startTime, endTime } = calculateOneHourSlot(selectionState.startY, selectionState.columnElement);
       if (onTimeRangeSelect) {
         onTimeRangeSelect(selectionState.startDate, startTime, endTime);
@@ -535,13 +1039,15 @@ export function TimelineCalendar({
         className="w-full"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {/* モバイル用スクロールヒント */}
         <div className="mb-2 text-xs text-muted-foreground md:hidden">
           ← 横にスクロールできます →
         </div>
 
-        <div className="w-full overflow-x-auto">
+        <div className="w-full overflow-x-auto touch-pan-x overscroll-x-contain">
           <div className="min-w-max border rounded-lg bg-card">
             {/* ヘッダー: 日付列 */}
             <div className="flex border-b bg-muted/50">
@@ -593,9 +1099,12 @@ export function TimelineCalendar({
                     driversMap={driversMap}
                     calculateSchedulePosition={calculateSchedulePosition}
                     onScheduleClick={onScheduleClick}
+                    onKeyboardMoveStart={handleKeyboardMoveStart}
                     onMouseDown={handleMouseDown}
+                    onTouchStart={handleTouchStart}
                     selectionState={selectionState}
                     conflictIds={dragConflictIds}
+                    keyboardMovingScheduleId={keyboardMoveMode.scheduleId}
                   />
                 );
               })}
@@ -630,6 +1139,15 @@ export function TimelineCalendar({
             : undefined
         }
       />
+
+      {/* スクリーンリーダー用のライブリージョン */}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {keyboardMoveMode.isActive && (
+          <span id="keyboard-move-instructions">
+            キーボード移動モード: 矢印キーで移動、Enterで確定、Escapeでキャンセル
+          </span>
+        )}
+      </div>
     </DndContext>
   );
 }

@@ -11,7 +11,9 @@ interface LazyScheduleCardProps {
   top: number;
   height: number;
   onClick?: () => void;
+  onKeyboardMoveStart?: (schedule: Schedule) => void;
   isConflicting?: boolean;
+  isKeyboardMoving?: boolean;
   layoutStyle?: {
     left: string;
     width: string;
@@ -30,7 +32,9 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
   top,
   height,
   onClick,
+  onKeyboardMoveStart,
   isConflicting = false,
+  isKeyboardMoving = false,
   layoutStyle = { left: '0%', width: '100%' },
 }: LazyScheduleCardProps) {
   const [isVisible, setIsVisible] = useState(false);
@@ -70,13 +74,23 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
   return (
     <div
       ref={containerRef}
-      className={`absolute schedule-card ${isConflicting ? 'ring-2 ring-destructive ring-offset-2 z-20' : ''}`}
+      className={`absolute schedule-card ${isConflicting ? 'ring-2 ring-destructive ring-offset-2 z-20' : ''} ${isKeyboardMoving ? 'ring-2 ring-primary ring-offset-2 z-20' : ''}`}
       style={{
         top: `${top}px`,
         height: `${height}px`,
         left: layoutStyle.left,
         width: layoutStyle.width,
-        zIndex: isConflicting ? 20 : 10,
+        zIndex: isConflicting || isKeyboardMoving ? 20 : 10,
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`スケジュール: ${schedule.title}, ${schedule.destinationAddress}, ${schedule.startTime}から${schedule.endTime}`}
+      aria-describedby={isKeyboardMoving ? 'keyboard-move-instructions' : undefined}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && !isKeyboardMoving && onKeyboardMoveStart) {
+          e.preventDefault();
+          onKeyboardMoveStart(schedule);
+        }
       }}
     >
       {/* 一度でも表示されたら、以降は常にレンダリング（ドラッグ操作のため） */}
@@ -88,6 +102,7 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
           driverName={driverName}
           onClick={onClick}
           isConflicting={isConflicting}
+          isKeyboardMoving={isKeyboardMoving}
         />
       ) : (
         // プレースホルダー: 軽量な空のdiv
