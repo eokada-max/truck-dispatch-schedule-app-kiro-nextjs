@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { Schedule, ScheduleFormData } from "@/types/Schedule";
 import type { Client } from "@/types/Client";
 import type { Driver } from "@/types/Driver";
@@ -108,6 +108,11 @@ export function ScheduleForm({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // scheduleまたはinitial値が変更されたときにフォームデータを更新
+  useEffect(() => {
+    setFormData(defaultValues);
+  }, [defaultValues]);
 
   // バリデーション関数
   const validateForm = (): boolean => {
