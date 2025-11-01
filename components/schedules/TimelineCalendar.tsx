@@ -376,13 +376,13 @@ export function TimelineCalendar({
     const newEndMins = newEndMinutes % 60;
     const newEndTime = `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}:00`;
 
-    // リアルタイム競合チェック
+    // リアルタイム競合チェック（最新のoptimisticSchedulesを使用）
     const conflict = checkConflict(
       schedule,
       newDate,
       newStartTime,
       newEndTime,
-      schedules
+      optimisticSchedules
     );
 
     if (conflict.hasConflict) {
@@ -391,7 +391,7 @@ export function TimelineCalendar({
     } else {
       setDragConflictIds(new Set());
     }
-  }, [schedules]);
+  }, [optimisticSchedules]);
 
   // ドラッグ終了ハンドラー（useCallbackでメモ化）
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
@@ -463,13 +463,13 @@ export function TimelineCalendar({
       return;
     }
 
-    // 競合チェック
+    // 競合チェック（最新のoptimisticSchedulesを使用）
     const conflict = checkConflict(
       schedule,
       newDate,
       newStartTime,
       newEndTime,
-      schedules
+      optimisticSchedules
     );
 
     if (conflict.hasConflict) {

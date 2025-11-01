@@ -16,7 +16,7 @@ import { toScheduleInsert, toScheduleUpdate } from "@/lib/utils/typeConverters";
 import { getErrorMessage } from "@/lib/utils/errorHandler";
 import type { ScheduleFormData } from "@/types/Schedule";
 import { cache } from "@/lib/utils/cache";
-import { useRealtimeSchedules } from "@/lib/hooks/useRealtimeSchedules";
+import { useRealtimeSchedules, recordMyOperation } from "@/lib/hooks/useRealtimeSchedules";
 
 // 重いコンポーネントを動的インポート（遅延ロード）
 const TimelineCalendar = lazy(() =>
@@ -138,6 +138,10 @@ export function SchedulesClient({
       if (selectedSchedule) {
         // 更新
         const updateData = toScheduleUpdate(data) as any;
+        
+        // 自分の操作を記録
+        recordMyOperation(selectedSchedule.id, 'UPDATE');
+        
         const { error } = await supabase
           .from("schedules_kiro_nextjs")
           .update(updateData)
@@ -148,11 +152,19 @@ export function SchedulesClient({
       } else {
         // 作成
         const insertData = toScheduleInsert(data);
-        const { error } = await supabase
+        const { data: insertedData, error } = await supabase
           .from("schedules_kiro_nextjs")
-          .insert([insertData] as any);
+          .insert([insertData] as any)
+          .select()
+          .single();
         
         if (error) throw error;
+        
+        // 自分の操作を記録
+        if (insertedData) {
+          recordMyOperation(insertedData.id, 'INSERT');
+        }
+        
         toast.success("スケジュールを登録しました");
       }
       router.refresh();
@@ -167,6 +179,10 @@ export function SchedulesClient({
   const handleDelete = async (id: string) => {
     try {
       const supabase = createClient();
+      
+      // 自分の操作を記録
+      recordMyOperation(id, 'DELETE');
+      
       const { error } = await supabase
         .from("schedules_kiro_nextjs")
         .delete()
@@ -186,6 +202,9 @@ export function SchedulesClient({
   const handleScheduleUpdate = async (scheduleId: string, updates: Partial<Schedule>) => {
     try {
       const supabase = createClient();
+      
+      // 自分の操作を記録
+      recordMyOperation(scheduleId, 'UPDATE');
       
       // キャメルケースをスネークケースに変換
       const dbUpdates: any = {};

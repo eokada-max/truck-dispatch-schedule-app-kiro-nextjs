@@ -5,7 +5,7 @@
  * 他のユーザーの変更を即座に反映します
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { Schedule } from '@/types/Schedule';
 import { toast } from 'sonner';
@@ -15,6 +15,30 @@ interface RealtimeSchedulesOptions {
     onUpdate?: (schedule: Schedule) => void;
     onDelete?: (scheduleId: string) => void;
     onRefresh?: () => void;
+}
+
+// 最近の操作を記録するグローバルSet（自分の操作を除外するため）
+const recentOperations = new Set<string>();
+
+/**
+ * 自分の操作を記録（3秒間保持）
+ */
+export function recordMyOperation(scheduleId: string, operation: 'INSERT' | 'UPDATE' | 'DELETE') {
+    const key = `${operation}:${scheduleId}`;
+    recentOperations.add(key);
+
+    // 3秒後に削除
+    setTimeout(() => {
+        recentOperations.delete(key);
+    }, 3000);
+}
+
+/**
+ * 自分の操作かどうかをチェック
+ */
+function isMyOperation(scheduleId: string, operation: 'INSERT' | 'UPDATE' | 'DELETE'): boolean {
+    const key = `${operation}:${scheduleId}`;
+    return recentOperations.has(key);
 }
 
 /**
@@ -48,17 +72,25 @@ export function useRealtimeSchedules({
                         // データベース形式からアプリ形式に変換
                         const newSchedule = convertDbToSchedule(payload.new);
 
-                        if (onInsert) {
-                            onInsert(newSchedule);
-                        } else if (onRefresh) {
-                            onRefresh();
-                        }
+                        // 自分の操作かチェック
+                        const isMyOp = isMyOperation(newSchedule.id, 'INSERT');
 
-                        // 通知を表示
-                        toast.info('他のユーザーがスケジュールを追加しました', {
-                            id: 'realtime-insert',
-                            duration: 2000,
-                        });
+                        // 自分の操作でない場合のみUI更新
+                        if (!isMyOp) {
+                            if (onInsert) {
+                                onInsert(newSchedule);
+                            } else if (onRefresh) {
+                                onRefresh();
+                            }
+
+                            // 通知を表示
+                            toast.info('他のユーザーがスケジュールを追加しました', {
+                                id: 'realtime-insert',
+                                duration: 2000,
+                            });
+                        } else {
+                            console.log('🔵 Realtime: 自分の操作なのでUI更新をスキップ');
+                        }
                     } catch (error) {
                         console.error('❌ Realtime: INSERT処理エラー', error);
                         // フォールバック: ページ全体をリフレッシュ
@@ -85,17 +117,25 @@ export function useRealtimeSchedules({
                     try {
                         const updatedSchedule = convertDbToSchedule(payload.new);
 
-                        if (onUpdate) {
-                            onUpdate(updatedSchedule);
-                        } else if (onRefresh) {
-                            onRefresh();
-                        }
+                        // 自分の操作かチェック
+                        const isMyOp = isMyOperation(updatedSchedule.id, 'UPDATE');
 
-                        // 通知を表示（控えめに）
-                        toast.info('他のユーザーがスケジュールを更新しました', {
-                            id: 'realtime-update',
-                            duration: 1500,
-                        });
+                        // 自分の操作でない場合のみUI更新
+                        if (!isMyOp) {
+                            if (onUpdate) {
+                                onUpdate(updatedSchedule);
+                            } else if (onRefresh) {
+                                onRefresh();
+                            }
+
+                            // 通知を表示
+                            toast.info('他のユーザーがスケジュールを更新しました', {
+                                id: 'realtime-update',
+                                duration: 1500,
+                            });
+                        } else {
+                            console.log('🔵 Realtime: 自分の操作なのでUI更新をスキップ');
+                        }
                     } catch (error) {
                         console.error('❌ Realtime: UPDATE処理エラー', error);
                         if (onRefresh) {
@@ -121,17 +161,25 @@ export function useRealtimeSchedules({
                     try {
                         const deletedId = payload.old.id as string;
 
-                        if (onDelete) {
-                            onDelete(deletedId);
-                        } else if (onRefresh) {
-                            onRefresh();
-                        }
+                        // 自分の操作かチェック
+                        const isMyOp = isMyOperation(deletedId, 'DELETE');
 
-                        // 通知を表示
-                        toast.info('他のユーザーがスケジュールを削除しました', {
-                            id: 'realtime-delete',
-                            duration: 2000,
-                        });
+                        // 自分の操作でない場合のみUI更新
+                        if (!isMyOp) {
+                            if (onDelete) {
+                                onDelete(deletedId);
+                            } else if (onRefresh) {
+                                onRefresh();
+                            }
+
+                            // 通知を表示
+                            toast.info('他のユーザーがスケジュールを削除しました', {
+                                id: 'realtime-delete',
+                                duration: 2000,
+                            });
+                        } else {
+                            console.log('🔵 Realtime: 自分の操作なのでUI更新をスキップ');
+                        }
                     } catch (error) {
                         console.error('❌ Realtime: DELETE処理エラー', error);
                         if (onRefresh) {
