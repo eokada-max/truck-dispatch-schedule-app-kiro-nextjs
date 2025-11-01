@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Calendar, Building2, User, Menu, X, Truck } from "lucide-react";
+import { VERSION_STRING, getVersionDescription } from "@/lib/version";
 
 export function Navigation() {
   const pathname = usePathname();
@@ -42,7 +43,12 @@ export function Navigation() {
                 <span className="hidden sm:inline">配送スケジュール管理</span>
                 <span className="sm:hidden">配送管理</span>
               </span>
-              <span className="text-xs text-muted-foreground">v1.1.0 - ドラッグ&ドロップ、時間範囲選択、リサイズ対応</span>
+              <span className="text-xs text-muted-foreground hidden sm:inline">
+                {VERSION_STRING} - {getVersionDescription()}
+              </span>
+              <span className="text-xs text-muted-foreground sm:hidden">
+                {VERSION_STRING}
+              </span>
             </div>
           </Link>
 

@@ -28,6 +28,7 @@ interface DroppableColumnProps {
   onKeyboardMoveStart?: (schedule: Schedule) => void;
   onMouseDown: (e: React.MouseEvent, date: string, columnElement: HTMLElement) => void;
   onTouchStart?: (e: React.TouchEvent, date: string, columnElement: HTMLElement) => void;
+  onTouchEnd?: (e: React.TouchEvent, date: string, columnElement: HTMLElement) => void;
   selectionState: SelectionState;
   conflictIds?: Set<string>;
   keyboardMovingScheduleId?: string | null;
@@ -49,6 +50,7 @@ export const DroppableColumn = memo(function DroppableColumn({
   onKeyboardMoveStart,
   onMouseDown,
   onTouchStart,
+  onTouchEnd,
   selectionState,
   conflictIds = new Set(),
   keyboardMovingScheduleId = null,
@@ -97,6 +99,12 @@ export const DroppableColumn = memo(function DroppableColumn({
         if (onTouchStart) {
           const columnElement = e.currentTarget;
           onTouchStart(e, date, columnElement);
+        }
+      }}
+      onTouchEnd={(e) => {
+        if (onTouchEnd) {
+          const columnElement = e.currentTarget;
+          onTouchEnd(e, date, columnElement);
         }
       }}
     >

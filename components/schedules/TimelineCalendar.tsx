@@ -822,20 +822,15 @@ export function TimelineCalendar({
   }, []);
 
   // タッチスタートハンドラー（モバイル対応）
+  // スマホでは範囲選択を無効化し、タップで1時間枠の新規作成のみ有効
   const handleTouchStart = useCallback((e: React.TouchEvent, date: string, columnElement: HTMLElement) => {
     // スケジュールカード上でのタッチは無視
     if ((e.target as HTMLElement).closest('.schedule-card')) {
       return;
     }
 
-    const touch = e.touches[0];
-    setSelectionState({
-      isSelecting: true,
-      startDate: date,
-      startY: touch.clientY,
-      currentY: touch.clientY,
-      columnElement,
-    });
+    // スマホでは範囲選択を無効化（タップで即座に1時間枠を作成）
+    // 範囲選択の状態は設定しない
   }, []);
 
   // クリック時の1時間枠作成用の時間計算（useCallbackでメモ化）
@@ -886,19 +881,13 @@ export function TimelineCalendar({
   );
 
   // タッチムーブハンドラー（モバイル対応）
+  // スマホでは範囲選択を無効化しているため、何もしない
   const handleTouchMove = useCallback(
     throttle((e: React.TouchEvent) => {
-      if (!selectionState.isSelecting) {
-        return;
-      }
-
-      const touch = e.touches[0];
-      setSelectionState(prev => ({
-        ...prev,
-        currentY: touch.clientY,
-      }));
+      // スマホでは範囲選択を無効化
+      return;
     }, 16), // 16ms（約60fps）でスロットル
-    [selectionState.isSelecting]
+    []
   );
 
   // マウスアップハンドラー（選択完了）（useCallbackでメモ化）
@@ -950,52 +939,21 @@ export function TimelineCalendar({
   }, [selectionState, onTimeRangeSelect, calculateOneHourSlot, calculateTimeFromY]);
 
   // タッチエンドハンドラー（モバイル対応）
-  const handleTouchEnd = useCallback(() => {
-    if (!selectionState.isSelecting || !selectionState.startDate || !selectionState.startY || !selectionState.currentY || !selectionState.columnElement) {
-      setSelectionState({
-        isSelecting: false,
-        startDate: null,
-        startY: null,
-        currentY: null,
-        columnElement: null,
-      });
+  // スマホでは範囲選択を無効化し、タップで1時間枠の新規作成のみ有効
+  const handleTouchEnd = useCallback((e: React.TouchEvent, date: string, columnElement: HTMLElement) => {
+    // スケジュールカード上でのタッチは無視
+    if ((e.target as HTMLElement).closest('.schedule-card')) {
       return;
     }
 
-    // Y座標の移動量を計算
-    const deltaY = Math.abs(selectionState.currentY - selectionState.startY);
-
-    // 移動量が5px以下の場合はタップとみなす
-    if (deltaY <= 5) {
-      // タップ：1時間枠でフォームを開く
-      const { startTime, endTime } = calculateOneHourSlot(selectionState.startY, selectionState.columnElement);
-      if (onTimeRangeSelect) {
-        onTimeRangeSelect(selectionState.startDate, startTime, endTime);
-      }
-    } else {
-      // ドラッグ：選択範囲でフォームを開く
-      const startTime = calculateTimeFromY(Math.min(selectionState.startY, selectionState.currentY), selectionState.columnElement);
-      const endTime = calculateTimeFromY(Math.max(selectionState.startY, selectionState.currentY), selectionState.columnElement);
-
-      // 最小選択時間チェック（15分）
-      const startMinutes = timeToMinutes(startTime);
-      const endMinutes = timeToMinutes(endTime);
-      const duration = endMinutes - startMinutes;
-
-      if (duration >= 15 && onTimeRangeSelect) {
-        onTimeRangeSelect(selectionState.startDate, startTime, endTime);
-      }
+    // タップした位置から1時間枠を計算
+    const touch = e.changedTouches[0];
+    const { startTime, endTime } = calculateOneHourSlot(touch.clientY, columnElement);
+    
+    if (onTimeRangeSelect) {
+      onTimeRangeSelect(date, startTime, endTime);
     }
-
-    // 選択状態をリセット
-    setSelectionState({
-      isSelecting: false,
-      startDate: null,
-      startY: null,
-      currentY: null,
-      columnElement: null,
-    });
-  }, [selectionState, onTimeRangeSelect, calculateOneHourSlot, calculateTimeFromY]);
+  }, [onTimeRangeSelect, calculateOneHourSlot]);
 
 
 
@@ -1039,8 +997,6 @@ export function TimelineCalendar({
         className="w-full"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         {/* モバイル用スクロールヒント */}
         <div className="mb-2 text-xs text-muted-foreground md:hidden">
@@ -1102,6 +1058,7 @@ export function TimelineCalendar({
                     onKeyboardMoveStart={handleKeyboardMoveStart}
                     onMouseDown={handleMouseDown}
                     onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
                     selectionState={selectionState}
                     conflictIds={dragConflictIds}
                     keyboardMovingScheduleId={keyboardMoveMode.scheduleId}
