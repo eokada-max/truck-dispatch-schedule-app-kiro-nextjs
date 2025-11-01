@@ -16,8 +16,10 @@ import type { Driver } from "@/types/Driver";
 import { generateDateRange, formatDateShort, getWeekdayJa, formatDate } from "@/lib/utils/dateUtils";
 import { generateTimeSlots, timeToMinutes } from "@/lib/utils/timeUtils";
 import { throttle } from "@/lib/utils/performanceUtils";
+import { checkConflict, type ConflictCheck } from "@/lib/utils/conflictDetection";
 import { ScheduleCard } from "./ScheduleCard";
 import { DroppableColumn } from "./DroppableColumn";
+import { ConflictWarningDialog } from "./ConflictWarningDialog";
 import { CalendarX2 } from "lucide-react";
 
 interface TimelineCalendarProps {
@@ -63,6 +65,17 @@ export function TimelineCalendar({
     currentY: null,
     columnElement: null,
   });
+  
+  // 競合検出の状態
+  const [conflictCheck, setConflictCheck] = useState<ConflictCheck | null>(null);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [pendingUpdate, setPendingUpdate] = useState<{
+    scheduleId: string;
+    updates: Partial<Schedule>;
+  } | null>(null);
+  
+  // ドラッグ中の競合スケジュールID（ハイライト用）
+  const [dragConflictIds, setDragConflictIds] = useState<Set<string>>(new Set());
 
   // schedulesが変更されたら、optimisticSchedulesも更新
   useMemo(() => {
@@ -172,8 +185,64 @@ export function TimelineCalendar({
     const schedule = event.active.data.current?.schedule;
     if (schedule) {
       setActiveSchedule(schedule);
+      setDragConflictIds(new Set());
     }
   }, []);
+
+  // ドラッグ中ハンドラー（リアルタイム競合チェック）
+  const handleDragMove = useCallback((event: any) => {
+    const { active, over, delta } = event;
+
+    if (!over || !active.data.current?.schedule) {
+      setDragConflictIds(new Set());
+      return;
+    }
+
+    const schedule = active.data.current.schedule as Schedule;
+    const dropTargetId = over.id as string;
+
+    if (!dropTargetId.startsWith('date-')) {
+      setDragConflictIds(new Set());
+      return;
+    }
+
+    const newDate = dropTargetId.replace('date-', '');
+
+    // Y軸の移動量から時間の変更を計算
+    const pixelsPerMinute = 1;
+    const minutesDelta = Math.round(delta.y / pixelsPerMinute / 15) * 15;
+
+    const originalStartMinutes = timeToMinutes(schedule.startTime);
+    const newStartMinutes = originalStartMinutes + minutesDelta;
+    const clampedStartMinutes = Math.max(9 * 60, Math.min(23 * 60, newStartMinutes));
+
+    const newStartHours = Math.floor(clampedStartMinutes / 60);
+    const newStartMins = clampedStartMinutes % 60;
+    const newStartTime = `${String(newStartHours).padStart(2, '0')}:${String(newStartMins).padStart(2, '0')}:00`;
+
+    const originalEndMinutes = timeToMinutes(schedule.endTime);
+    const duration = originalEndMinutes - originalStartMinutes;
+    const newEndMinutes = clampedStartMinutes + duration;
+    const newEndHours = Math.floor(newEndMinutes / 60);
+    const newEndMins = newEndMinutes % 60;
+    const newEndTime = `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}:00`;
+
+    // リアルタイム競合チェック
+    const conflict = checkConflict(
+      schedule,
+      newDate,
+      newStartTime,
+      newEndTime,
+      schedules
+    );
+
+    if (conflict.hasConflict) {
+      const conflictIds = new Set(conflict.conflictingSchedules.map(s => s.id));
+      setDragConflictIds(conflictIds);
+    } else {
+      setDragConflictIds(new Set());
+    }
+  }, [schedules]);
 
   // ドラッグ終了ハンドラー（useCallbackでメモ化）
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
@@ -222,6 +291,36 @@ export function TimelineCalendar({
     const newEndMins = newEndMinutes % 60;
     const newEndTime = `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}:00`;
 
+    // 変更がない場合は何もしない
+    if (newDate === schedule.eventDate && newStartTime === schedule.startTime) {
+      return;
+    }
+
+    // 競合チェック
+    const conflict = checkConflict(
+      schedule,
+      newDate,
+      newStartTime,
+      newEndTime,
+      schedules
+    );
+
+    if (conflict.hasConflict) {
+      // 競合がある場合はダイアログを表示
+      setConflictCheck(conflict);
+      setPendingUpdate({
+        scheduleId: schedule.id,
+        updates: {
+          eventDate: newDate,
+          startTime: newStartTime,
+          endTime: newEndTime,
+        },
+      });
+      setShowConflictDialog(true);
+      return;
+    }
+
+    // 競合がない場合は即座に更新
     // 楽観的UI更新：即座にUIを更新
     setOptimisticSchedules(prev =>
       prev.map(s =>
@@ -232,7 +331,7 @@ export function TimelineCalendar({
     );
 
     // スケジュールを更新
-    if (onScheduleUpdate && (newDate !== schedule.eventDate || newStartTime !== schedule.startTime + ':00')) {
+    if (onScheduleUpdate) {
       try {
         await onScheduleUpdate(schedule.id, {
           eventDate: newDate,
@@ -245,6 +344,43 @@ export function TimelineCalendar({
       }
     }
   }, [onScheduleUpdate, schedules]);
+
+  // 競合を承知で更新を続行
+  const handleConflictConfirm = useCallback(async () => {
+    if (!pendingUpdate || !onScheduleUpdate) {
+      return;
+    }
+
+    // 楽観的UI更新
+    setOptimisticSchedules(prev =>
+      prev.map(s =>
+        s.id === pendingUpdate.scheduleId
+          ? { ...s, ...pendingUpdate.updates }
+          : s
+      )
+    );
+
+    try {
+      await onScheduleUpdate(pendingUpdate.scheduleId, pendingUpdate.updates);
+    } catch (error) {
+      // エラーが発生したら元に戻す
+      setOptimisticSchedules(schedules);
+    }
+
+    // 状態をリセット（競合ハイライトもクリア）
+    setShowConflictDialog(false);
+    setConflictCheck(null);
+    setPendingUpdate(null);
+    setDragConflictIds(new Set()); // 🔧 追加: 赤いハイライトをクリア
+  }, [pendingUpdate, onScheduleUpdate, schedules]);
+
+  // 競合ダイアログをキャンセル
+  const handleConflictCancel = useCallback(() => {
+    setShowConflictDialog(false);
+    setConflictCheck(null);
+    setPendingUpdate(null);
+    setDragConflictIds(new Set()); // 🔧 追加: 赤いハイライトをクリア
+  }, []);
 
   // マウスダウンハンドラー（時間範囲選択開始）（useCallbackでメモ化）
   const handleMouseDown = useCallback((e: React.MouseEvent, date: string, columnElement: HTMLElement) => {
@@ -392,6 +528,7 @@ export function TimelineCalendar({
       collisionDetection={pointerWithin}
       modifiers={[snapToGrid]}
       onDragStart={handleDragStart}
+      onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
     >
       <div
@@ -458,6 +595,7 @@ export function TimelineCalendar({
                     onScheduleClick={onScheduleClick}
                     onMouseDown={handleMouseDown}
                     selectionState={selectionState}
+                    conflictIds={dragConflictIds}
                   />
                 );
               })}
@@ -478,6 +616,20 @@ export function TimelineCalendar({
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* 競合警告ダイアログ */}
+      <ConflictWarningDialog
+        open={showConflictDialog}
+        onOpenChange={setShowConflictDialog}
+        conflictCheck={conflictCheck}
+        onConfirm={handleConflictConfirm}
+        onCancel={handleConflictCancel}
+        driverName={
+          pendingUpdate && schedules.find(s => s.id === pendingUpdate.scheduleId)?.driverId
+            ? driversMap.get(schedules.find(s => s.id === pendingUpdate.scheduleId)!.driverId!)?.name
+            : undefined
+        }
+      />
     </DndContext>
   );
 }

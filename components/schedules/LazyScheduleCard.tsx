@@ -11,6 +11,11 @@ interface LazyScheduleCardProps {
   top: number;
   height: number;
   onClick?: () => void;
+  isConflicting?: boolean;
+  layoutStyle?: {
+    left: string;
+    width: string;
+  };
 }
 
 /**
@@ -25,6 +30,8 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
   top,
   height,
   onClick,
+  isConflicting = false,
+  layoutStyle = { left: '0%', width: '100%' },
 }: LazyScheduleCardProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [hasBeenVisible, setHasBeenVisible] = useState(false);
@@ -63,13 +70,13 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
   return (
     <div
       ref={containerRef}
-      className="absolute schedule-card"
+      className={`absolute schedule-card ${isConflicting ? 'ring-2 ring-destructive ring-offset-2 z-20' : ''}`}
       style={{
         top: `${top}px`,
         height: `${height}px`,
-        left: 0,
-        right: 0,
-        zIndex: 10,
+        left: layoutStyle.left,
+        width: layoutStyle.width,
+        zIndex: isConflicting ? 20 : 10,
       }}
     >
       {/* 一度でも表示されたら、以降は常にレンダリング（ドラッグ操作のため） */}
@@ -80,6 +87,7 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
           clientName={clientName}
           driverName={driverName}
           onClick={onClick}
+          isConflicting={isConflicting}
         />
       ) : (
         // プレースホルダー: 軽量な空のdiv

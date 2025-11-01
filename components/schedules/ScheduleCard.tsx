@@ -10,6 +10,7 @@ interface ScheduleCardProps {
   clientName?: string;
   driverName?: string;
   onClick?: () => void;
+  isConflicting?: boolean;
 }
 
 /**
@@ -17,48 +18,54 @@ interface ScheduleCardProps {
  * タイムライン上の個別スケジュール表示
  * React.memoでメモ化してパフォーマンスを最適化
  */
-export const ScheduleCard = memo(function ScheduleCard({ schedule, clientName, driverName, onClick }: ScheduleCardProps) {
+export const ScheduleCard = memo(function ScheduleCard({ schedule, clientName, driverName, onClick, isConflicting = false }: ScheduleCardProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onClick?.();
   };
   
+  const cardClassName = isConflicting
+    ? "absolute bg-destructive/20 border-2 border-destructive rounded p-1.5 hover:bg-destructive/30 transition-colors overflow-hidden"
+    : "absolute bg-primary/10 border border-primary/30 rounded p-1.5 hover:bg-primary/20 transition-colors overflow-hidden";
+  
   return (
     <div
       onClick={handleClick}
-      className="absolute inset-x-1 bg-primary/10 border border-primary/30 rounded p-2 hover:bg-primary/20 transition-colors overflow-hidden"
+      className={cardClassName}
       style={{
         // 高さは親コンポーネントで計算して設定
         top: 0,
-        height: "100%",
+        left: '2px',
+        right: '2px',
+        height: "calc(100% - 4px)",
       }}
     >
-      <div className="text-xs font-semibold text-primary truncate">
+      <div className="text-xs font-semibold text-primary truncate" title={schedule.title}>
         {schedule.title}
       </div>
-      <div className="flex items-start gap-1 mt-1">
+      <div className="flex items-start gap-1 mt-0.5">
         <MapPin className="w-3 h-3 text-muted-foreground flex-shrink-0 mt-0.5" />
-        <div className="text-xs text-muted-foreground truncate">
+        <div className="text-xs text-muted-foreground truncate" title={schedule.destinationAddress}>
           {schedule.destinationAddress}
         </div>
       </div>
       {clientName && (
-        <div className="flex items-center gap-1 mt-1">
+        <div className="flex items-center gap-1 mt-0.5">
           <Building2 className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-          <div className="text-xs text-muted-foreground truncate">
+          <div className="text-xs text-muted-foreground truncate" title={clientName}>
             {clientName}
           </div>
         </div>
       )}
       {driverName && (
-        <div className="flex items-center gap-1 mt-1">
+        <div className="flex items-center gap-1 mt-0.5">
           <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-          <div className="text-xs text-muted-foreground truncate">
+          <div className="text-xs text-muted-foreground truncate" title={driverName}>
             {driverName}
           </div>
         </div>
       )}
-      <div className="text-xs text-muted-foreground mt-1">
+      <div className="text-xs text-muted-foreground mt-0.5">
         {formatTimeRange(schedule.startTime, schedule.endTime)}
       </div>
     </div>

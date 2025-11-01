@@ -1,8 +1,9 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import type { Schedule } from "@/types/Schedule";
 import type { Client } from "@/types/Client";
 import type { Driver } from "@/types/Driver";
+import { calculateScheduleLayouts, getLayoutStyle } from "@/lib/utils/scheduleLayout";
 import { LazyScheduleCard } from "./LazyScheduleCard";
 import { TimeSlotGrid } from "./TimeSlotGrid";
 import { SelectionOverlay } from "./SelectionOverlay";
@@ -26,6 +27,7 @@ interface DroppableColumnProps {
   onScheduleClick?: (schedule: Schedule) => void;
   onMouseDown: (e: React.MouseEvent, date: string, columnElement: HTMLElement) => void;
   selectionState: SelectionState;
+  conflictIds?: Set<string>;
 }
 
 /**
@@ -43,10 +45,16 @@ export const DroppableColumn = memo(function DroppableColumn({
   onScheduleClick,
   onMouseDown,
   selectionState,
+  conflictIds = new Set(),
 }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id,
   });
+
+  // スケジュールのレイアウトを計算（重なりを考慮）
+  const scheduleLayouts = useMemo(() => {
+    return calculateScheduleLayouts(schedules);
+  }, [schedules]);
 
   // 選択範囲の矩形を計算
   const getSelectionRect = () => {
@@ -97,6 +105,11 @@ export const DroppableColumn = memo(function DroppableColumn({
         const driverName = schedule.driverId
           ? driversMap.get(schedule.driverId)?.name
           : undefined;
+        const isConflicting = conflictIds.has(schedule.id);
+        
+        // レイアウト情報を取得（重なりを考慮した横位置）
+        const layout = scheduleLayouts.get(schedule.id);
+        const layoutStyle = layout ? getLayoutStyle(layout) : { left: '0%', width: '100%' };
 
         return (
           <LazyScheduleCard
@@ -107,6 +120,8 @@ export const DroppableColumn = memo(function DroppableColumn({
             top={top}
             height={height}
             onClick={() => onScheduleClick?.(schedule)}
+            isConflicting={isConflicting}
+            layoutStyle={layoutStyle}
           />
         );
       })}
