@@ -29,6 +29,7 @@ export async function getSchedulesByDateRange(
             content,
             client_id,
             driver_id,
+            vehicle_id,
             created_at,
             updated_at,
             clients_kiro_nextjs!client_id(id, name),
@@ -65,6 +66,7 @@ export async function getSchedulesByDate(date: string): Promise<Schedule[]> {
             content,
             client_id,
             driver_id,
+            vehicle_id,
             created_at,
             updated_at,
             clients_kiro_nextjs!client_id(id, name),
@@ -103,6 +105,7 @@ export async function getSchedulesByDriver(
             content,
             client_id,
             driver_id,
+            vehicle_id,
             created_at,
             updated_at,
             clients_kiro_nextjs!client_id(id, name)
@@ -179,10 +182,10 @@ export async function updateSchedule(
     input: UpdateScheduleInput
 ): Promise<Schedule> {
     const supabase = createBrowserClient();
-    const updateData = toScheduleUpdate(input) as any;
+    const updateData = toScheduleUpdate(input);
 
-    const { data, error } = await supabase
-        .from("schedules_kiro_nextjs")
+    const { data, error } = await (supabase
+        .from("schedules_kiro_nextjs") as any)
         .update(updateData)
         .eq("id", id)
         .select()
@@ -230,6 +233,7 @@ export async function getAllSchedules(): Promise<Schedule[]> {
             content,
             client_id,
             driver_id,
+            vehicle_id,
             created_at,
             updated_at,
             clients_kiro_nextjs!client_id(id, name),

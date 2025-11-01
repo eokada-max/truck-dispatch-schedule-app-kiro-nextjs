@@ -19,6 +19,7 @@ import type { Client } from "@/types/Client";
 import { ResourceCalendarHeader } from "./ResourceCalendarHeader";
 import { ResourceRow } from "./ResourceRow";
 import { ResourceScheduleCard } from "./ResourceScheduleCard";
+import type { TimeSlot } from "@/lib/utils/timeAxisUtils";
 
 type Resource = Vehicle | Driver;
 
@@ -36,7 +37,7 @@ interface ResourceCalendarProps {
     scheduleId: string,
     updates: Partial<Schedule>
   ) => Promise<void>;
-  onCellClick?: (resourceId: string, date: string) => void;
+  onCellClick?: (resourceId: string, date: string, timeSlot?: TimeSlot) => void;
 }
 
 export function ResourceCalendar({
@@ -95,6 +96,9 @@ export function ResourceCalendar({
     resources.forEach((resource) => {
       map.set(resource.id, []);
     });
+    
+    // 未割り当てスケジュール用の特別なキー
+    map.set("unassigned", []);
 
     // スケジュールを振り分け
     if (schedules && Array.isArray(schedules)) {
@@ -103,7 +107,11 @@ export function ResourceCalendar({
           viewType === "vehicle" ? schedule.vehicleId : schedule.driverId;
         
         if (resourceId && map.has(resourceId)) {
+          // リソースが割り当てられている場合
           map.get(resourceId)!.push(schedule);
+        } else {
+          // リソースが未割り当ての場合
+          map.get("unassigned")!.push(schedule);
         }
       });
     }
@@ -197,13 +205,35 @@ export function ResourceCalendar({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="w-full overflow-auto">
+      <div className="w-full overflow-auto border rounded-lg">
         <div className="min-w-max">
           {/* ヘッダー */}
           <ResourceCalendarHeader dates={dates} />
 
           {/* リソース行 */}
-          <div className="divide-y border-t">
+          <div>
+            {/* 未割り当てスケジュール行 */}
+            {schedulesByResource.get("unassigned")!.length > 0 && (
+              <ResourceRow
+                key="unassigned"
+                resource={{
+                  id: "unassigned",
+                  name: viewType === "vehicle" ? "未割り当て車両" : "未割り当てドライバー",
+                  createdAt: "",
+                  updatedAt: "",
+                } as any}
+                dates={dates}
+                schedules={schedulesByResource.get("unassigned") || []}
+                viewType={viewType}
+                clientsMap={clientsMap}
+                driversMap={driversMap}
+                vehiclesMap={vehiclesMap}
+                onScheduleClick={onScheduleClick}
+                onCellClick={onCellClick}
+              />
+            )}
+            
+            {/* 通常のリソース行 */}
             {resources.map((resource) => (
               <ResourceRow
                 key={resource.id}

@@ -21,6 +21,8 @@ interface ConflictWarningDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   driverName?: string;
+  vehicleName?: string;
+  resourceType?: "driver" | "vehicle";
 }
 
 /**
@@ -36,6 +38,8 @@ export function ConflictWarningDialog({
   onConfirm,
   onCancel,
   driverName,
+  vehicleName,
+  resourceType = "driver",
 }: ConflictWarningDialogProps) {
   if (!conflictCheck || !conflictCheck.hasConflict) {
     return null;
@@ -59,11 +63,15 @@ export function ConflictWarningDialog({
         </AlertDialogHeader>
         
         <div className="text-base text-muted-foreground">
-          {driverName && (
+          {(driverName || vehicleName) && (
             <div className="flex items-center gap-2 mb-2">
               <User className="w-4 h-4" />
-              <span className="font-semibold">{driverName}</span>
-              <span>が同じ時間帯に複数の配送を担当することになります。</span>
+              <span className="font-semibold">
+                {resourceType === "driver" ? driverName : vehicleName}
+              </span>
+              <span>
+                が同じ時間帯に複数の{resourceType === "driver" ? "配送" : "使用"}を担当することになります。
+              </span>
             </div>
           )}
           <div>

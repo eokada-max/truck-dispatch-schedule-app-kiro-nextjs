@@ -7,6 +7,7 @@ import type { Vehicle } from "@/types/Vehicle";
 import type { Client } from "@/types/Client";
 import { ResourceCell } from "./ResourceCell";
 import { Truck, User } from "lucide-react";
+import type { TimeSlot } from "@/lib/utils/timeAxisUtils";
 
 type Resource = Vehicle | Driver;
 
@@ -19,7 +20,7 @@ interface ResourceRowProps {
   driversMap?: Map<string, { id: string; name: string }>;
   vehiclesMap?: Map<string, { id: string; name: string }>;
   onScheduleClick?: (schedule: Schedule) => void;
-  onCellClick?: (resourceId: string, date: string) => void;
+  onCellClick?: (resourceId: string, date: string, timeSlot?: TimeSlot) => void;
 }
 
 // 型ガード
@@ -38,23 +39,10 @@ export function ResourceRow({
   onScheduleClick,
   onCellClick,
 }: ResourceRowProps) {
-  // 日付ごとのスケジュールをグルーピング
-  const schedulesByDate = new Map<string, Schedule[]>();
-  dates.forEach((date) => {
-    const dateStr = format(date, "yyyy-MM-dd");
-    schedulesByDate.set(dateStr, []);
-  });
-
-  schedules.forEach((schedule) => {
-    if (schedulesByDate.has(schedule.eventDate)) {
-      schedulesByDate.get(schedule.eventDate)!.push(schedule);
-    }
-  });
-
   return (
-    <div className="grid grid-cols-[200px_repeat(7,1fr)] border-b">
+    <div className="grid grid-cols-[200px_1fr] border-b">
       {/* リソース名列 */}
-      <div className="sticky left-0 bg-muted/50 border-r p-4 flex items-center gap-2">
+      <div className="sticky left-0 bg-muted/50 border-r p-4 flex items-center gap-2 z-10">
         {isVehicle(resource) ? (
           <>
             <Truck className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -75,26 +63,28 @@ export function ResourceRow({
         )}
       </div>
 
-      {/* 日付セル */}
-      {dates.map((date) => {
-        const dateStr = format(date, "yyyy-MM-dd");
-        const daySchedules = schedulesByDate.get(dateStr) || [];
+      {/* 週全体の時間軸エリア（日付ごとにセルを分ける） */}
+      <div className="grid grid-cols-7">
+        {dates.map((date) => {
+          const dateStr = format(date, "yyyy-MM-dd");
+          const daySchedules = schedules.filter(s => s.eventDate === dateStr);
 
-        return (
-          <ResourceCell
-            key={dateStr}
-            resourceId={resource.id}
-            date={dateStr}
-            schedules={daySchedules}
-            viewType={viewType}
-            clientsMap={clientsMap}
-            driversMap={driversMap}
-            vehiclesMap={vehiclesMap}
-            onScheduleClick={onScheduleClick}
-            onClick={() => onCellClick?.(resource.id, dateStr)}
-          />
-        );
-      })}
+          return (
+            <ResourceCell
+              key={dateStr}
+              resourceId={resource.id}
+              date={dateStr}
+              schedules={daySchedules}
+              viewType={viewType}
+              clientsMap={clientsMap}
+              driversMap={driversMap}
+              vehiclesMap={vehiclesMap}
+              onScheduleClick={onScheduleClick}
+              onClick={(timeSlot: TimeSlot) => onCellClick?.(resource.id, dateStr, timeSlot)}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -1,8 +1,8 @@
-import { getSchedulesByDateRange } from "@/lib/api/schedules";
+import { getAllSchedules } from "@/lib/api/schedules";
 import { getAllClients } from "@/lib/api/clients";
 import { getAllDrivers } from "@/lib/api/drivers";
 import { getAllVehicles } from "@/lib/api/vehicles";
-import { formatDate, addDays, getToday } from "@/lib/utils/dateUtils";
+import { getToday } from "@/lib/utils/dateUtils";
 import { SchedulesClient } from "./SchedulesClient";
 
 // パフォーマンス最適化：キャッシング戦略
@@ -15,17 +15,14 @@ export const dynamic = 'force-dynamic';
 /**
  * スケジュール管理ページ（Server Component）
  * データ取得を担当し、Client Componentに渡す
- * パフォーマンス最適化：60秒間キャッシュを保持
+ * 全スケジュールを取得してクライアント側でフィルタリング
  */
 export default async function SchedulesPage() {
-  // デフォルトで今日から7日間のスケジュールを取得
   const today = getToday();
-  const startDate = formatDate(today);
-  const endDate = formatDate(addDays(today, 6));
 
-  // 並行してデータを取得
+  // 並行してデータを取得（全スケジュールを取得）
   const [schedules, clients, drivers, vehicles] = await Promise.all([
-    getSchedulesByDateRange(startDate, endDate),
+    getAllSchedules(),
     getAllClients(),
     getAllDrivers(),
     getAllVehicles(),

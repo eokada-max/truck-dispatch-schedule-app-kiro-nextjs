@@ -61,6 +61,23 @@ export function SchedulesClient({
   const startDate = getMonday(currentDate);
   const endDate = getSunday(currentDate);
   
+  // 範囲外警告：データ範囲外に移動した場合に通知
+  useEffect(() => {
+    if (schedules.length === 0) return;
+    
+    // 取得済みスケジュールの日付範囲を計算
+    const scheduleDates = schedules.map(s => new Date(s.eventDate));
+    const minDate = new Date(Math.min(...scheduleDates.map(d => d.getTime())));
+    const maxDate = new Date(Math.max(...scheduleDates.map(d => d.getTime())));
+    
+    // 現在表示している週が範囲外かチェック
+    if (currentDate < minDate || currentDate > maxDate) {
+      console.warn('[SchedulesClient] 表示範囲外です。ページをリロードすると最新データが取得されます。');
+      // 必要に応じてトースト通知を表示
+      // toast.info('表示範囲外です。ページをリロードすると最新データが取得されます。');
+    }
+  }, [currentDate, schedules]);
+  
   // リアルタイム同期を有効化
   useRealtimeSchedules({
     onInsert: (newSchedule) => {

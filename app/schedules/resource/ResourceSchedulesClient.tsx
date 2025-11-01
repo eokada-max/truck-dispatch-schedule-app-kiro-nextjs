@@ -11,6 +11,7 @@ import { ResourceViewToggle } from "@/components/schedules/ResourceViewToggle";
 import { ResourceCalendar } from "@/components/schedules/ResourceCalendar";
 import { ScheduleForm } from "@/components/schedules/ScheduleForm";
 import { DateNavigation } from "@/components/schedules/DateNavigation";
+import { ResourceFilter, type ResourceFilterOptions } from "@/components/schedules/ResourceFilter";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useRealtimeSchedules, recordMyOperation } from "@/lib/hooks/useRealtimeSchedules";
@@ -52,12 +53,23 @@ export function ResourceSchedulesClient({
   // ビュータイプ（車両 or ドライバー）
   const [viewType, setViewType] = useState<"vehicle" | "driver">("vehicle");
 
+  // フィルター状態管理
+  const [filters, setFilters] = useState<ResourceFilterOptions>({
+    showOwnDrivers: true,
+    showPartnerDrivers: true,
+    showOwnVehicles: true,
+    showPartnerVehicles: true,
+    sortBy: "name",
+  });
+
   // フォーム状態管理
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | undefined>();
   const [formInitialData, setFormInitialData] = useState<{
     date?: string;
     resourceId?: string;
+    startTime?: string;
+    endTime?: string;
   }>({});
 
   // 現在の週の開始日と終了日
@@ -88,11 +100,66 @@ export function ResourceSchedulesClient({
   };
 
   // セルクリックハンドラー（新規作成）
-  const handleCellClick = (resourceId: string, date: string) => {
+  const handleCellClick = (resourceId: string, date: string, timeSlot?: number) => {
+    // 時間帯に基づいて初期時間を設定
+    let startTime = "09:00:00";
+    let endTime = "17:00:00";
+    
+    if (timeSlot !== undefined) {
+      const startHour = timeSlot.toString().padStart(2, '0');
+      const endHour = Math.min(timeSlot + 2, 23).toString().padStart(2, '0');
+      startTime = `${startHour}:00:00`;
+      endTime = `${endHour}:00:00`;
+    }
+    
     setSelectedSchedule(undefined);
-    setFormInitialData({ date, resourceId });
+    setFormInitialData({ 
+      date, 
+      resourceId,
+      startTime,
+      endTime,
+    });
     setIsFormOpen(true);
   };
+
+  // リソースのフィルタリングと並び替え
+  const filteredResources = (() => {
+    // フィルタリング
+    const filtered = viewType === "vehicle"
+      ? vehicles.filter((vehicle) => {
+        const isPartner = !!vehicle.partnerCompanyId;
+        return isPartner ? filters.showPartnerVehicles : filters.showOwnVehicles;
+      })
+      : drivers.filter((driver) => {
+        const isPartner = !!driver.partnerCompanyId;
+        return isPartner ? filters.showPartnerDrivers : filters.showOwnDrivers;
+      });
+
+    // 並び替え
+    if (filters.sortBy === "name") {
+      // 名前順
+      return filtered.sort((a, b) => {
+        const nameA = viewType === "vehicle"
+          ? (a as Vehicle).licensePlate
+          : (a as Driver).name;
+        const nameB = viewType === "vehicle"
+          ? (b as Vehicle).licensePlate
+          : (b as Driver).name;
+        return nameA.localeCompare(nameB, 'ja');
+      });
+    } else {
+      // スケジュール数順
+      return filtered.sort((a, b) => {
+        const countA = schedules.filter(s =>
+          viewType === "vehicle" ? s.vehicleId === a.id : s.driverId === a.id
+        ).length;
+        const countB = schedules.filter(s =>
+          viewType === "vehicle" ? s.vehicleId === b.id : s.driverId === b.id
+        ).length;
+        return countB - countA; // 降順（多い順）
+      });
+    }
+  })();
 
   // フォーム送信ハンドラー
   const handleFormSubmit = async (data: ScheduleFormData) => {
@@ -113,11 +180,11 @@ export function ResourceSchedulesClient({
 
         recordMyOperation(selectedSchedule.id, "UPDATE");
         const updated = await updateSchedule(selectedSchedule.id, updateInput);
-        
+
         setSchedules((prev) =>
           prev.map((s) => (s.id === updated.id ? updated : s))
         );
-        
+
         toast.success("スケジュールを更新しました");
       } else {
         // 新規作成モード
@@ -130,12 +197,12 @@ export function ResourceSchedulesClient({
 
         const newSchedule = await createSchedule(createInput);
         recordMyOperation(newSchedule.id, "INSERT");
-        
+
         setSchedules((prev) => [...prev, newSchedule]);
-        
+
         toast.success("スケジュールを作成しました");
       }
-      
+
       setIsFormOpen(false);
     } catch (error) {
       console.error("Failed to save schedule:", error);
@@ -148,9 +215,9 @@ export function ResourceSchedulesClient({
     try {
       recordMyOperation(id, "DELETE");
       await deleteSchedule(id);
-      
+
       setSchedules((prev) => prev.filter((s) => s.id !== id));
-      
+
       toast.success("スケジュールを削除しました");
       setIsFormOpen(false);
     } catch (error) {
@@ -176,10 +243,10 @@ export function ResourceSchedulesClient({
       prev.map((s) =>
         s.id === scheduleId
           ? {
-              ...s,
-              ...updates,
-              updatedAt: new Date().toISOString(),
-            }
+            ...s,
+            ...updates,
+            updatedAt: new Date().toISOString(),
+          }
           : s
       )
     );
@@ -203,7 +270,7 @@ export function ResourceSchedulesClient({
 
       // サーバーに更新を送信
       await updateSchedule(scheduleId, updateInput);
-      
+
       // 成功メッセージ
       const messages = [];
       if (updates.eventDate) {
@@ -215,16 +282,16 @@ export function ResourceSchedulesClient({
       if (updates.driverId) {
         messages.push("ドライバーを変更");
       }
-      
+
       toast.success(`スケジュールを更新しました（${messages.join("、")}）`);
     } catch (error) {
       console.error("Failed to update schedule:", error);
-      
+
       // エラー時：ロールバック（元の状態に戻す）
       setSchedules((prev) =>
         prev.map((s) => (s.id === scheduleId ? originalSchedule : s))
       );
-      
+
       toast.error("スケジュールの更新に失敗しました。元に戻しました。");
       throw error;
     }
@@ -237,7 +304,7 @@ export function ResourceSchedulesClient({
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
             <h1 className="text-2xl font-bold">リソースカレンダー</h1>
-            
+
             <div className="flex items-center gap-2 w-full sm:w-auto">
               {/* 週ナビゲーション */}
               <DateNavigation
@@ -246,7 +313,14 @@ export function ResourceSchedulesClient({
                 onNext={handleNextWeek}
                 onToday={handleToday}
               />
-              
+
+              {/* フィルター */}
+              <ResourceFilter
+                viewType={viewType}
+                filters={filters}
+                onFiltersChange={setFilters}
+              />
+
               {/* スケジュール追加ボタン */}
               <Button
                 onClick={() => {
@@ -275,7 +349,7 @@ export function ResourceSchedulesClient({
         <ResourceCalendar
           viewType={viewType}
           schedules={schedules}
-          resources={viewType === "vehicle" ? vehicles : drivers}
+          resources={filteredResources}
           clients={clients}
           drivers={drivers}
           vehicles={vehicles}
@@ -298,6 +372,10 @@ export function ResourceSchedulesClient({
         onSubmit={handleFormSubmit}
         onDelete={handleDelete}
         initialDate={formInitialData.date}
+        initialStartTime={formInitialData.startTime}
+        initialEndTime={formInitialData.endTime}
+        initialDriverId={viewType === "driver" ? formInitialData.resourceId : undefined}
+        initialVehicleId={viewType === "vehicle" ? formInitialData.resourceId : undefined}
       />
     </div>
   );

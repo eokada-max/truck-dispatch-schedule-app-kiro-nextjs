@@ -39,7 +39,19 @@
 4. WHEN User がスケジュールを別のリソース行かつ別の日付列にドロップする, THEN THE System SHALL リソースと日付の両方を変更する
 5. THE System SHALL ドロップ後に即座にデータベースを更新する
 
-### Requirement 3: スケジュールカードの表示
+### Requirement 3: 時間軸の表示
+
+**User Story:** As a 配送管理者, I want 日付ブロック内に時間軸を表示したい, so that スケジュールの時間帯を視覚的に把握できる
+
+#### Acceptance Criteria
+
+1. THE System SHALL 各日付ブロックを4つの時間帯（0-6時、6-12時、12-18時、18-24時）に分割する
+2. THE System SHALL 時間帯の区切り線（0時、6時、12時、18時）を表示する
+3. THE System SHALL スケジュールカードを開始時間と終了時間に基づいて横方向に配置する
+4. THE System SHALL スケジュールカードの幅を時間の長さに比例させる
+5. WHEN スケジュールが9:00-15:00の場合, THEN THE System SHALL カードを9時の位置から15時の位置まで横に伸ばして表示する
+
+### Requirement 4: スケジュールカードの表示
 
 **User Story:** As a 配送管理者, I want スケジュールの詳細情報をカードで確認したい, so that 必要な情報を素早く把握できる
 
@@ -51,8 +63,9 @@
 4. THE System SHALL スケジュールカードにクライアント名を表示する
 5. WHEN 車両軸表示の場合, THEN THE System SHALL スケジュールカードにドライバー名を表示する
 6. WHEN ドライバー軸表示の場合, THEN THE System SHALL スケジュールカードに車両情報を表示する
+7. WHEN スケジュールカードの幅が狭い場合, THEN THE System SHALL 情報を省略して表示する
 
-### Requirement 4: スケジュールの作成と編集
+### Requirement 5: スケジュールの作成と編集
 
 **User Story:** As a 配送管理者, I want カレンダー上でスケジュールを作成・編集したい, so that 効率的にスケジュール管理ができる
 
@@ -64,7 +77,7 @@
 4. THE System SHALL 既存のスケジュールフォームを再利用する
 5. THE System SHALL フォーム送信後にカレンダー表示を更新する
 
-### Requirement 5: 週間ナビゲーション
+### Requirement 6: 週間ナビゲーション
 
 **User Story:** As a 配送管理者, I want 週を切り替えたい, so that 過去や未来のスケジュールを確認できる
 
@@ -76,7 +89,7 @@
 4. THE System SHALL 今週に戻るボタンを表示する
 5. WHEN User が週を切り替える, THEN THE System SHALL 該当週のスケジュールを表示する
 
-### Requirement 6: リソースのフィルタリングと並び替え
+### Requirement 7: リソースのフィルタリングと並び替え
 
 **User Story:** As a 配送管理者, I want リソースをフィルタリング・並び替えたい, so that 必要なリソースのみを表示できる
 
@@ -88,7 +101,7 @@
 4. THE System SHALL リソースを名前順に並び替える機能を提供する
 5. THE System SHALL スケジュール数順に並び替える機能を提供する
 
-### Requirement 7: レスポンシブ対応
+### Requirement 8: レスポンシブ対応
 
 **User Story:** As a 配送管理者, I want スマホでもリソースカレンダーを確認したい, so that 外出先でもスケジュールを確認できる
 
@@ -100,7 +113,7 @@
 4. THE System SHALL タッチ操作でのドラッグ&ドロップをサポートする
 5. THE System SHALL スマホ画面では日付ヘッダーを固定表示する
 
-### Requirement 8: リアルタイム同期
+### Requirement 9: リアルタイム同期
 
 **User Story:** As a 配送管理者, I want 他のユーザーの変更をリアルタイムで確認したい, so that 常に最新の情報を把握できる
 
@@ -112,7 +125,7 @@
 4. THE System SHALL 自分の操作による変更は即座に反映する（楽観的UI更新）
 5. THE System SHALL 他のユーザーの変更時に通知を表示する
 
-### Requirement 9: 競合検出と警告
+### Requirement 10: 競合検出と警告
 
 **User Story:** As a 配送管理者, I want リソースの重複割り当てを検出したい, so that ダブルブッキングを防止できる
 
@@ -124,7 +137,7 @@
 4. THE System SHALL 警告ダイアログで競合の詳細を表示する
 5. THE System SHALL User に操作の続行または中止を選択させる
 
-### Requirement 10: パフォーマンス最適化
+### Requirement 11: パフォーマンス最適化
 
 **User Story:** As a 配送管理者, I want カレンダーが高速に動作してほしい, so that ストレスなく操作できる
 

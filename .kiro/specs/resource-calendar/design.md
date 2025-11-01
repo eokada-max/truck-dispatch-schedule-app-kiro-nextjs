@@ -92,7 +92,7 @@ interface ResourceRowProps {
 
 ### 3. ResourceCell
 
-**責務**: リソース×日付のセルを表示、ドロップ可能領域
+**責務**: リソース×日付のセルを表示、時間軸に沿ってスケジュールを配置
 
 **Props**:
 ```typescript
@@ -101,14 +101,24 @@ interface ResourceCellProps {
   date: string;
   schedules: Schedule[];
   onScheduleClick?: (schedule: Schedule) => void;
-  onClick?: () => void;
+  onClick?: (timeSlot: number) => void; // 0, 6, 12, 18のいずれか
 }
 ```
 
+**レイアウト**:
+```
+┌────────┬────────┬────────┬────────┐
+│ 0-6時  │ 6-12時 │ 12-18時│ 18-24時│
+│ [スケジュール────────]      │        │
+│        │   [スケジュール──]│        │
+└────────┴────────┴────────┴────────┘
+```
+
 **機能**:
+- 時間軸（0時、6時、12時、18時）で4分割
+- スケジュールは開始時間と終了時間に基づいて横に伸びる
+- 時間帯をクリックで新規作成（その時間帯を初期値として設定）
 - Droppable エリアとして機能
-- 複数のスケジュールカードを縦に並べて表示
-- クリックで新規作成
 
 ### 4. ResourceScheduleCard
 
@@ -142,6 +152,66 @@ interface ResourceViewToggleProps {
   viewType: 'vehicle' | 'driver';
   onViewTypeChange: (viewType: 'vehicle' | 'driver') => void;
 }
+```
+
+## Time Axis Utilities
+
+### 時間から位置への変換
+
+```typescript
+/**
+ * 時間文字列（HH:mm）を0-100%の位置に変換
+ * @param time - "09:30" 形式の時間文字列
+ * @returns 0-100の数値（パーセンテージ）
+ */
+function timeToPosition(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  const totalMinutes = hours * 60 + minutes;
+  return (totalMinutes / (24 * 60)) * 100;
+}
+
+/**
+ * スケジュールの開始時間と終了時間から、CSSのleftとwidthを計算
+ * @param startTime - "09:00" 形式の開始時間
+ * @param endTime - "15:00" 形式の終了時間
+ * @returns { left: string, width: string } - CSS用の値
+ */
+function calculateSchedulePosition(
+  startTime: string,
+  endTime: string
+): { left: string; width: string } {
+  const startPos = timeToPosition(startTime);
+  const endPos = timeToPosition(endTime);
+  const width = endPos - startPos;
+  
+  return {
+    left: `${startPos}%`,
+    width: `${width}%`,
+  };
+}
+
+/**
+ * 時間帯（0, 6, 12, 18）から開始時間を取得
+ * @param timeSlot - 0, 6, 12, 18のいずれか
+ * @returns "HH:00" 形式の時間文字列
+ */
+function timeSlotToTime(timeSlot: number): string {
+  return `${timeSlot.toString().padStart(2, '0')}:00`;
+}
+```
+
+### 時間軸の定義
+
+```typescript
+const TIME_SLOTS = [0, 6, 12, 18] as const;
+type TimeSlot = typeof TIME_SLOTS[number];
+
+const TIME_SLOT_LABELS = {
+  0: '0-6時',
+  6: '6-12時',
+  12: '12-18時',
+  18: '18-24時',
+} as const;
 ```
 
 ## Data Models
@@ -336,11 +406,44 @@ function checkResourceConflict(
 }
 
 .resource-cell {
-  min-height: 100px;
-  padding: 0.5rem;
+  position: relative;
+  min-height: 80px;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   background: var(--card);
+}
+
+/* 時間軸グリッド（0, 6, 12, 18時の区切り線） */
+.resource-cell::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 25%;
+  width: 1px;
+  background: var(--border);
+  opacity: 0.3;
+}
+
+.resource-cell::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--border);
+  opacity: 0.3;
+}
+
+.resource-cell .time-divider-75 {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 75%;
+  width: 1px;
+  background: var(--border);
+  opacity: 0.3;
 }
 
 .resource-cell:hover {
@@ -348,16 +451,22 @@ function checkResourceConflict(
 }
 ```
 
-### スケジュールカード
+### スケジュールカード（時間軸対応）
 
 ```css
 .resource-schedule-card {
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
-  border-radius: 0.375rem;
+  position: absolute;
+  top: 4px;
+  height: calc(100% - 8px);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
   background: var(--card);
   border: 1px solid var(--border);
   cursor: grab;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.875rem;
 }
 
 .resource-schedule-card:active {
@@ -367,6 +476,33 @@ function checkResourceConflict(
 .resource-schedule-card.conflicting {
   border-color: var(--destructive);
   background: var(--destructive-foreground);
+}
+
+/* 時間に基づく位置とサイズ */
+/* 例: 9:00-15:00 のスケジュール */
+/* left: (9/24 * 100)% = 37.5% */
+/* width: ((15-9)/24 * 100)% = 25% */
+```
+
+### 時間軸ヘッダー
+
+```css
+.time-axis-header {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.time-axis-header span {
+  border-right: 1px solid var(--border);
+}
+
+.time-axis-header span:last-child {
+  border-right: none;
 }
 ```
 

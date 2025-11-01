@@ -40,6 +40,8 @@ interface ScheduleFormProps {
   initialDate?: string;
   initialStartTime?: string;
   initialEndTime?: string;
+  initialDriverId?: string;
+  initialVehicleId?: string;
 }
 
 /**
@@ -58,6 +60,8 @@ export function ScheduleForm({
   initialDate,
   initialStartTime,
   initialEndTime,
+  initialDriverId,
+  initialVehicleId,
 }: ScheduleFormProps) {
   const isEditMode = !!schedule;
 
@@ -94,8 +98,8 @@ export function ScheduleForm({
       destinationAddress: "",
       content: "",
       clientId: "",
-      driverId: "",
-      vehicleId: "",
+      driverId: initialDriverId || "",
+      vehicleId: initialVehicleId || "",
     };
   }, [schedule, initialDate, initialStartTime, initialEndTime]);
 

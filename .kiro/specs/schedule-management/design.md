@@ -436,3 +436,127 @@ describe('ScheduleForm', () => {
 - Supabase Dashboard でのマイグレーション管理
 - スキーマ変更の慎重な実施
 - バックアップ戦略の確立
+
+
+## Future Performance Considerations
+
+### データ取得戦略の将来的な改善
+
+#### 現在の実装（2025-11-01時点）
+
+**タイムラインカレンダー (`/schedules`)**
+- `getAllSchedules()`を使用して全スケジュールを取得
+- クライアント側で週単位にフィルタリング
+- UX優先：週ナビゲーションでどこに移動してもスケジュールが表示される
+
+**リソースカレンダー (`/schedules/resource`)**
+- `getAllSchedules()`を使用して全スケジュールを取得
+- リソース別フィルタリングのため全データが必要
+
+#### パフォーマンス上の懸念
+
+**スケジュール数が増加した場合（目安：5,000件以上）**
+- 初期ロード時間の増加
+- メモリ使用量の増加
+- クライアント側フィルタリングのオーバーヘッド
+
+#### 将来的な改善案
+
+**1. 動的データ取得（Infinite Scroll / Pagination）**
+```typescript
+// 範囲外に移動したら追加データを取得
+useEffect(() => {
+  if (isOutOfRange(currentDate, loadedDateRange)) {
+    fetchAdditionalSchedules(currentDate);
+  }
+}, [currentDate]);
+```
+
+**メリット**:
+- 初期ロードが高速
+- メモリ使用量を抑制
+- 大量データに対応可能
+
+**実装コスト**: 中〜高
+
+**2. 仮想スクロール（React Window / React Virtual）**
+```typescript
+import { FixedSizeList } from 'react-window';
+
+// 大量のスケジュールを効率的にレンダリング
+<FixedSizeList
+  height={600}
+  itemCount={schedules.length}
+  itemSize={100}
+>
+  {({ index, style }) => (
+    <ScheduleCard schedule={schedules[index]} style={style} />
+  )}
+</FixedSizeList>
+```
+
+**メリット**:
+- DOM要素数を削減
+- レンダリングパフォーマンス向上
+
+**実装コスト**: 中
+
+**3. サーバーサイドページネーション**
+```typescript
+// app/schedules/page.tsx
+const searchParams = await props.searchParams;
+const page = Number(searchParams.page) || 1;
+const pageSize = 100;
+
+const schedules = await getSchedulesPaginated(page, pageSize);
+```
+
+**メリット**:
+- データ転送量を削減
+- 初期ロード時間を短縮
+
+**デメリット**:
+- UXが若干低下（ページ遷移が必要）
+
+**実装コスト**: 低
+
+#### 推奨アプローチ
+
+**フェーズ1（現在）**: 全件取得
+- スケジュール数: 〜5,000件
+- 実装: シンプル
+- UX: 最高
+
+**フェーズ2（スケール時）**: 動的データ取得
+- スケジュール数: 5,000件〜50,000件
+- 実装: `getSchedulesByDateRange()`を活用
+- 範囲外に移動したら自動的に追加取得
+- UX: 良好（ローディング表示のみ）
+
+**フェーズ3（大規模）**: 仮想スクロール + ページネーション
+- スケジュール数: 50,000件以上
+- 実装: React Window + サーバーサイドページネーション
+- UX: 良好
+
+#### モニタリング指標
+
+以下の指標を監視し、パフォーマンス問題の兆候を早期発見：
+
+- **初期ロード時間**: 3秒以内を維持
+- **Time to Interactive (TTI)**: 5秒以内を維持
+- **メモリ使用量**: 100MB以内を維持
+- **スケジュール件数**: 月次で確認
+
+#### 実装時の注意点
+
+1. **既存のAPI関数を活用**
+   - `getSchedulesByDateRange()`は既に実装済み
+   - 動的取得への移行が容易
+
+2. **段階的な移行**
+   - 全件取得 → 動的取得への移行は比較的容易
+   - 既存のコンポーネント構造を大きく変更する必要なし
+
+3. **キャッシュ戦略**
+   - Next.jsのキャッシュ（revalidate: 60秒）を活用
+   - クライアント側でもReact Queryなどのキャッシュライブラリを検討
