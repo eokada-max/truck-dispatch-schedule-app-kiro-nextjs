@@ -1004,7 +1004,7 @@ export function TimelineCalendar({
         </div>
 
         <div className="w-full overflow-x-auto touch-pan-x overscroll-x-contain">
-          <div className="min-w-max border rounded-lg bg-card">
+          <div className="w-fit border rounded-lg bg-card">
             {/* ヘッダー: 日付列 */}
             <div className="flex border-b bg-muted/50">
               {/* 時間軸のヘッダー（空白） */}
