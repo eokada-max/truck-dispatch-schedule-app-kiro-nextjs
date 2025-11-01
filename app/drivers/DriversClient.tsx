@@ -25,7 +25,7 @@ interface DriversClientProps {
 
 export function DriversClient({ initialDrivers, partnerCompanies }: DriversClientProps) {
   const router = useRouter();
-  const [drivers] = useState<Driver[]>(initialDrivers);
+  const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Driver | undefined>();
 
@@ -46,9 +46,7 @@ export function DriversClient({ initialDrivers, partnerCompanies }: DriversClien
       
       if (selectedDriver) {
         // 更新
-        // Note: Supabaseの型推論の制限により、as anyを使用
-        // データ構造はdatabase.tsの型定義と一致しており、実行時は安全
-        const { error } = await supabase
+        const { data: updatedData, error } = await supabase
           .from("drivers_kiro_nextjs")
           .update({
             name: data.name,
@@ -56,26 +54,53 @@ export function DriversClient({ initialDrivers, partnerCompanies }: DriversClien
             is_in_house: data.isInHouse,
             partner_company_id: data.partnerCompanyId || null,
           } as any)
-          .eq("id", selectedDriver.id);
+          .eq("id", selectedDriver.id)
+          .select()
+          .single();
         
         if (error) throw error;
+        
+        // 楽観的UI更新：即座に画面に反映
+        const updatedDriver: Driver = {
+          id: (updatedData as any).id,
+          name: (updatedData as any).name,
+          contactInfo: (updatedData as any).contact_info,
+          isInHouse: (updatedData as any).is_in_house,
+          partnerCompanyId: (updatedData as any).partner_company_id,
+          createdAt: (updatedData as any).created_at,
+        };
+        setDrivers((prev) =>
+          prev.map((d) => (d.id === selectedDriver.id ? updatedDriver : d))
+        );
         toast.success("ドライバーを更新しました");
       } else {
         // 作成
-        // Note: Supabaseの型推論の制限により、as anyを使用
-        // データ構造はdatabase.tsの型定義と一致しており、実行時は安全
-        const { error } = await supabase
+        const { data: newData, error } = await supabase
           .from("drivers_kiro_nextjs")
-          .insert([{
+          .insert({
             name: data.name,
             contact_info: data.contactInfo || null,
             is_in_house: data.isInHouse,
             partner_company_id: data.partnerCompanyId || null,
-          }] as any);
+          } as any)
+          .select()
+          .single();
         
         if (error) throw error;
+        
+        // 楽観的UI更新：即座に画面に反映
+        const newDriver: Driver = {
+          id: (newData as any).id,
+          name: (newData as any).name,
+          contactInfo: (newData as any).contact_info,
+          isInHouse: (newData as any).is_in_house,
+          partnerCompanyId: (newData as any).partner_company_id,
+          createdAt: (newData as any).created_at,
+        };
+        setDrivers((prev) => [...prev, newDriver]);
         toast.success("ドライバーを登録しました");
       }
+      // バックグラウンドでサーバーデータを再取得
       router.refresh();
     } catch (error) {
       const message = getErrorMessage(error);
@@ -86,6 +111,10 @@ export function DriversClient({ initialDrivers, partnerCompanies }: DriversClien
 
   // 削除ハンドラー
   const handleDelete = async (id: string) => {
+    if (!confirm("このドライバーを削除しますか？\n\nこの操作は取り消せません。")) {
+      return;
+    }
+
     try {
       const supabase = createClient();
       const { error } = await supabase
@@ -94,11 +123,17 @@ export function DriversClient({ initialDrivers, partnerCompanies }: DriversClien
         .eq("id", id);
       
       if (error) throw error;
+      
+      // 楽観的UI更新：即座に画面から削除
+      setDrivers((prev) => prev.filter((d) => d.id !== id));
       toast.success("ドライバーを削除しました");
+      // バックグラウンドでサーバーデータを再取得
       router.refresh();
     } catch (error) {
       const message = getErrorMessage(error);
       toast.error(`削除に失敗しました: ${message}`);
+      // エラー時はロールバック
+      router.refresh();
       throw error;
     }
   };

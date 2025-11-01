@@ -27,6 +27,17 @@ CREATE TABLE IF NOT EXISTS drivers_kiro_nextjs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Vehicles テーブル（車両情報）
+CREATE TABLE IF NOT EXISTS vehicles_kiro_nextjs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  license_plate TEXT NOT NULL,
+  partner_company_id UUID REFERENCES partner_companies_kiro_nextjs(id) ON DELETE SET NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Schedules テーブル（スケジュール情報）
 CREATE TABLE IF NOT EXISTS schedules_kiro_nextjs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -38,6 +49,7 @@ CREATE TABLE IF NOT EXISTS schedules_kiro_nextjs (
   content TEXT,
   client_id UUID REFERENCES clients_kiro_nextjs(id) ON DELETE SET NULL,
   driver_id UUID REFERENCES drivers_kiro_nextjs(id) ON DELETE SET NULL,
+  vehicle_id UUID REFERENCES vehicles_kiro_nextjs(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -51,6 +63,15 @@ CREATE INDEX IF NOT EXISTS idx_schedules_kiro_nextjs_driver_id
 
 CREATE INDEX IF NOT EXISTS idx_schedules_kiro_nextjs_client_id 
   ON schedules_kiro_nextjs(client_id);
+
+CREATE INDEX IF NOT EXISTS idx_schedules_kiro_nextjs_vehicle_id 
+  ON schedules_kiro_nextjs(vehicle_id);
+
+CREATE INDEX IF NOT EXISTS idx_vehicles_kiro_nextjs_partner_company_id 
+  ON vehicles_kiro_nextjs(partner_company_id);
+
+CREATE INDEX IF NOT EXISTS idx_vehicles_kiro_nextjs_is_active 
+  ON vehicles_kiro_nextjs(is_active);
 
 -- updated_at自動更新トリガー
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -66,8 +87,15 @@ CREATE TRIGGER update_schedules_kiro_nextjs_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_vehicles_kiro_nextjs_updated_at
+  BEFORE UPDATE ON vehicles_kiro_nextjs
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- コメント追加（ドキュメント化）
 COMMENT ON TABLE clients_kiro_nextjs IS '配送依頼元のクライアント情報';
 COMMENT ON TABLE partner_companies_kiro_nextjs IS '配送を委託する協力会社情報';
 COMMENT ON TABLE drivers_kiro_nextjs IS 'ドライバー情報（自社・協力会社）';
+COMMENT ON TABLE vehicles_kiro_nextjs IS '車両情報（自社・協力会社）';
 COMMENT ON TABLE schedules_kiro_nextjs IS '配送スケジュール情報';
+COMMENT ON COLUMN schedules_kiro_nextjs.vehicle_id IS '割り当てられた車両ID';

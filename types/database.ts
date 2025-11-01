@@ -72,6 +72,35 @@ export interface Database {
           created_at?: string;
         };
       };
+      vehicles_kiro_nextjs: {
+        Row: {
+          id: string;
+          name: string;
+          license_plate: string;
+          partner_company_id: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          license_plate: string;
+          partner_company_id?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          license_plate?: string;
+          partner_company_id?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       schedules_kiro_nextjs: {
         Row: {
           id: string;
@@ -83,6 +112,7 @@ export interface Database {
           content: string | null;
           client_id: string | null;
           driver_id: string | null;
+          vehicle_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -96,6 +126,7 @@ export interface Database {
           content?: string | null;
           client_id?: string | null;
           driver_id?: string | null;
+          vehicle_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -109,6 +140,7 @@ export interface Database {
           content?: string | null;
           client_id?: string | null;
           driver_id?: string | null;
+          vehicle_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };

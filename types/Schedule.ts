@@ -11,6 +11,7 @@ export interface Schedule {
   content: string | null;
   clientId: string | null;
   driverId: string | null;
+  vehicleId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,6 +28,7 @@ export interface CreateScheduleInput {
   content?: string;
   clientId?: string;
   driverId?: string;
+  vehicleId?: string;
 }
 
 /**
@@ -41,6 +43,7 @@ export interface UpdateScheduleInput {
   content?: string;
   clientId?: string;
   driverId?: string;
+  vehicleId?: string;
 }
 
 /**
@@ -55,4 +58,5 @@ export interface ScheduleFormData {
   content: string;
   clientId: string;
   driverId: string;
+  vehicleId: string;
 }

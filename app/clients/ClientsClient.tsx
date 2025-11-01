@@ -23,7 +23,7 @@ interface ClientsClientProps {
 
 export function ClientsClient({ initialClients }: ClientsClientProps) {
   const router = useRouter();
-  const [clients] = useState<Client[]>(initialClients);
+  const [clients, setClients] = useState<Client[]>(initialClients);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
 
@@ -44,32 +44,53 @@ export function ClientsClient({ initialClients }: ClientsClientProps) {
       
       if (selectedClient) {
         // 更新
-        // Note: Supabaseの型推論の制限により、as anyを使用
-        // データ構造はdatabase.tsの型定義と一致しており、実行時は安全
-        const { error } = await supabase
+        const { data: updatedData, error } = await supabase
           .from("clients_kiro_nextjs")
           .update({
             name: data.name,
             contact_info: data.contactInfo || null,
           } as any)
-          .eq("id", selectedClient.id);
+          .eq("id", selectedClient.id)
+          .select()
+          .single();
         
         if (error) throw error;
+        
+        // 楽観的UI更新：即座に画面に反映
+        const updatedClient: Client = {
+          id: (updatedData as any).id,
+          name: (updatedData as any).name,
+          contactInfo: (updatedData as any).contact_info,
+          createdAt: (updatedData as any).created_at,
+        };
+        setClients((prev) =>
+          prev.map((c) => (c.id === selectedClient.id ? updatedClient : c))
+        );
         toast.success("クライアントを更新しました");
       } else {
         // 作成
-        // Note: Supabaseの型推論の制限により、as anyを使用
-        // データ構造はdatabase.tsの型定義と一致しており、実行時は安全
-        const { error } = await supabase
+        const { data: newData, error } = await supabase
           .from("clients_kiro_nextjs")
-          .insert([{
+          .insert({
             name: data.name,
             contact_info: data.contactInfo || null,
-          }] as any);
+          } as any)
+          .select()
+          .single();
         
         if (error) throw error;
+        
+        // 楽観的UI更新：即座に画面に反映
+        const newClient: Client = {
+          id: (newData as any).id,
+          name: (newData as any).name,
+          contactInfo: (newData as any).contact_info,
+          createdAt: (newData as any).created_at,
+        };
+        setClients((prev) => [...prev, newClient]);
         toast.success("クライアントを登録しました");
       }
+      // バックグラウンドでサーバーデータを再取得
       router.refresh();
     } catch (error) {
       const message = getErrorMessage(error);
@@ -80,6 +101,10 @@ export function ClientsClient({ initialClients }: ClientsClientProps) {
 
   // 削除ハンドラー
   const handleDelete = async (id: string) => {
+    if (!confirm("このクライアントを削除しますか？\n\nこの操作は取り消せません。")) {
+      return;
+    }
+
     try {
       const supabase = createClient();
       const { error } = await supabase
@@ -88,11 +113,17 @@ export function ClientsClient({ initialClients }: ClientsClientProps) {
         .eq("id", id);
       
       if (error) throw error;
+      
+      // 楽観的UI更新：即座に画面から削除
+      setClients((prev) => prev.filter((c) => c.id !== id));
       toast.success("クライアントを削除しました");
+      // バックグラウンドでサーバーデータを再取得
       router.refresh();
     } catch (error) {
       const message = getErrorMessage(error);
       toast.error(`削除に失敗しました: ${message}`);
+      // エラー時はロールバック
+      router.refresh();
       throw error;
     }
   };
