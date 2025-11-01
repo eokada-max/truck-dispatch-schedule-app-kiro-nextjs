@@ -8,7 +8,7 @@ import type { Driver } from "@/types/Driver";
 import { DateNavigation } from "@/components/schedules/DateNavigation";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { addDays, getToday } from "@/lib/utils/dateUtils";
+import { addDays, getToday, getMonday, getSunday } from "@/lib/utils/dateUtils";
 // Client側ではブラウザ用のAPI関数を使用
 import { createClient } from "@/lib/supabase/client";
 import { toScheduleInsert, toScheduleUpdate } from "@/lib/utils/typeConverters";
@@ -53,9 +53,9 @@ export function SchedulesClient({
   // リアルタイムスケジュール管理
   const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules);
 
-  // 表示期間を計算（currentDateから7日間）
-  const startDate = currentDate;
-  const endDate = addDays(currentDate, 6);
+  // 表示期間を計算（currentDateが含まれる週の月曜日～日曜日）
+  const startDate = getMonday(currentDate);
+  const endDate = getSunday(currentDate);
   
   // リアルタイム同期を有効化
   useRealtimeSchedules({

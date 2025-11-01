@@ -122,6 +122,45 @@ export function getToday(): Date {
 }
 
 /**
+ * 指定した日付が含まれる週の月曜日を取得
+ */
+export function getMonday(date: Date): Date {
+  const result = new Date(date);
+  const day = result.getDay();
+  // 日曜日は0、月曜日は1なので、月曜日までの差分を計算
+  const diff = day === 0 ? -6 : 1 - day;
+  result.setDate(result.getDate() + diff);
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
+/**
+ * 指定した日付が含まれる週の日曜日を取得
+ */
+export function getSunday(date: Date): Date {
+  const monday = getMonday(date);
+  return addDays(monday, 6);
+}
+
+/**
+ * 週の期間を表示用にフォーマット（○○月○○日～○○月○○日）
+ */
+export function formatWeekRange(startDate: Date, endDate: Date): string {
+  const startMonth = startDate.getMonth() + 1;
+  const startDay = startDate.getDate();
+  const endMonth = endDate.getMonth() + 1;
+  const endDay = endDate.getDate();
+  
+  // 同じ月の場合
+  if (startMonth === endMonth) {
+    return `${startMonth}月${startDay}日～${endDay}日`;
+  }
+  
+  // 異なる月の場合
+  return `${startMonth}月${startDay}日～${endMonth}月${endDay}日`;
+}
+
+/**
  * 2つの日付が同じ日かどうかを判定
  */
 export function isSameDay(date1: Date, date2: Date): boolean {

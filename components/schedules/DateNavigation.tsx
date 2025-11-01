@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
-import { formatDateJa } from "@/lib/utils/dateUtils";
+import { getMonday, getSunday, formatWeekRange } from "@/lib/utils/dateUtils";
 
 interface DateNavigationProps {
   currentDate: Date;
@@ -34,9 +34,9 @@ export function DateNavigation({
         <ChevronLeft className="w-4 h-4" />
       </Button>
 
-      {/* 現在の日付表示 */}
+      {/* 現在の週の期間表示 */}
       <div className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium min-w-[140px] sm:min-w-[200px] text-center flex-grow sm:flex-grow-0">
-        {formatDateJa(currentDate)}
+        {formatWeekRange(getMonday(currentDate), getSunday(currentDate))}
       </div>
 
       {/* 次へボタン */}
