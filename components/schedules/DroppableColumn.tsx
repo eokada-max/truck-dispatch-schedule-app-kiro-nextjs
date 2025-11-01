@@ -32,6 +32,7 @@ interface DroppableColumnProps {
   selectionState: SelectionState;
   conflictIds?: Set<string>;
   keyboardMovingScheduleId?: string | null;
+  isLast?: boolean;
 }
 
 /**
@@ -54,6 +55,7 @@ export const DroppableColumn = memo(function DroppableColumn({
   selectionState,
   conflictIds = new Set(),
   keyboardMovingScheduleId = null,
+  isLast = false,
 }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id,
@@ -88,9 +90,9 @@ export const DroppableColumn = memo(function DroppableColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`w-48 flex-shrink-0 border-r last:border-r-0 relative ${
-        isOver ? "bg-primary/5" : ""
-      }`}
+      className={`w-48 flex-shrink-0 relative ${
+        !isLast ? 'border-r' : ''
+      } ${isOver ? "bg-primary/5" : ""}`}
       onMouseDown={(e) => {
         const columnElement = e.currentTarget;
         onMouseDown(e, date, columnElement);

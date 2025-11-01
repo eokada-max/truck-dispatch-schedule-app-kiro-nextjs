@@ -1013,10 +1013,12 @@ export function TimelineCalendar({
               </div>
 
               {/* 日付ヘッダー */}
-              {dates.map((date) => (
+              {dates.map((date, index) => (
                 <div
                   key={date.toISOString()}
-                  className="w-48 flex-shrink-0 border-r last:border-r-0 p-2 text-center"
+                  className={`w-48 flex-shrink-0 p-2 text-center ${
+                    index < dates.length - 1 ? 'border-r' : ''
+                  }`}
                 >
                   <div className="font-semibold text-sm">
                     {formatDateShort(date)}
@@ -1040,9 +1042,10 @@ export function TimelineCalendar({
               </div>
 
               {/* 日付ごとの列 */}
-              {dates.map((date) => {
+              {dates.map((date, index) => {
                 const dateStr = formatDate(date);
                 const daySchedules = schedulesByDate.get(dateStr) || [];
+                const isLast = index === dates.length - 1;
 
                 return (
                   <DroppableColumn
@@ -1062,6 +1065,7 @@ export function TimelineCalendar({
                     selectionState={selectionState}
                     conflictIds={dragConflictIds}
                     keyboardMovingScheduleId={keyboardMoveMode.scheduleId}
+                    isLast={isLast}
                   />
                 );
               })}
