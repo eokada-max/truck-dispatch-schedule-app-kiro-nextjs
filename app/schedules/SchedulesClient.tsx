@@ -30,10 +30,13 @@ const ScheduleForm = lazy(() =>
   }))
 );
 
+import type { Vehicle } from "@/types/Vehicle";
+
 interface SchedulesClientProps {
   initialSchedules: Schedule[];
   clients: Client[];
   drivers: Driver[];
+  vehicles: Vehicle[];
   initialStartDate: Date;
 }
 
@@ -41,6 +44,7 @@ export function SchedulesClient({
   initialSchedules,
   clients,
   drivers,
+  vehicles,
   initialStartDate,
 }: SchedulesClientProps) {
   const [currentDate, setCurrentDate] = useState(initialStartDate);
@@ -79,7 +83,7 @@ export function SchedulesClient({
     
     if (!cached) {
       // 初回アクセス時にキャッシュに保存（5分間有効）
-      cache.set(cacheKey, { clients, drivers }, 5 * 60 * 1000);
+      cache.set(cacheKey, { clients, drivers }, { ttl: 5 * 60 * 1000 });
     }
   }, [clients, drivers]);
 
@@ -127,41 +131,101 @@ export function SchedulesClient({
 
   // フォーム送信ハンドラー
   const handleFormSubmit = async (data: ScheduleFormData) => {
+    console.log('📝 フォーム送信開始:', data);
     try {
       const supabase = createClient();
       
       if (selectedSchedule) {
         // 更新
-        const updateData = toScheduleUpdate(data) as any;
+        const updateData = toScheduleUpdate(data);
+        console.log('🔄 更新データ:', updateData);
         
-        // 自分の操作を記録
+        // 楽観的UI更新：即座にローカル状態を更新
+        const updatedSchedule: Schedule = {
+          ...selectedSchedule,
+          eventDate: data.eventDate,
+          startTime: data.startTime,
+          endTime: data.endTime,
+          title: data.title,
+          destinationAddress: data.destinationAddress,
+          content: data.content || '',
+          clientId: data.clientId || '',
+          driverId: data.driverId || '',
+          vehicleId: data.vehicleId || null,
+        };
+        
+        setSchedules(prev =>
+          prev.map(s => s.id === selectedSchedule.id ? updatedSchedule : s)
+        );
+        
+        // 自分の操作を記録（リアルタイム更新をスキップするため）
         recordMyOperation(selectedSchedule.id, 'UPDATE');
         
-        const { error } = await supabase
-          .from("schedules_kiro_nextjs")
+        const { error } = await (supabase
+          .from("schedules_kiro_nextjs") as any)
           .update(updateData)
           .eq("id", selectedSchedule.id);
         
-        if (error) throw error;
+        if (error) {
+          console.error('❌ 更新エラー:', error);
+          // エラー時は元に戻す
+          setSchedules(prev =>
+            prev.map(s => s.id === selectedSchedule.id ? selectedSchedule : s)
+          );
+          throw error;
+        }
+        console.log('✅ 更新成功');
         toast.success("スケジュールを更新しました");
       } else {
         // 作成
         const insertData = toScheduleInsert(data);
-        const { data: insertedData, error } = await supabase
-          .from("schedules_kiro_nextjs")
-          .insert([insertData] as any)
+        console.log('➕ 挿入データ:', insertData);
+        
+        const { data: insertedData, error } = await (supabase
+          .from("schedules_kiro_nextjs") as any)
+          .insert([insertData])
           .select()
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error('❌ 挿入エラー:', error);
+          throw error;
+        }
+        console.log('✅ 挿入成功:', insertedData);
         
-        // 自分の操作を記録
+        // 楽観的UI更新：即座にローカル状態を更新
         if (insertedData) {
+          const newSchedule: Schedule = {
+            id: insertedData.id,
+            eventDate: insertedData.event_date,
+            startTime: insertedData.start_time,
+            endTime: insertedData.end_time,
+            title: insertedData.title,
+            destinationAddress: insertedData.destination_address,
+            content: insertedData.content || '',
+            clientId: insertedData.client_id || '',
+            driverId: insertedData.driver_id || '',
+            vehicleId: insertedData.vehicle_id || null,
+            createdAt: insertedData.created_at,
+            updatedAt: insertedData.updated_at,
+          };
+          
+          setSchedules(prev => [...prev, newSchedule]);
+          
+          // 自分の操作を記録（リアルタイム更新をスキップするため）
           recordMyOperation(insertedData.id, 'INSERT');
         }
         
         toast.success("スケジュールを登録しました");
       }
+      
+      // フォームを閉じる
+      setIsFormOpen(false);
+      setSelectedSchedule(undefined);
+      setPrefilledDate(undefined);
+      setPrefilledStartTime(undefined);
+      setPrefilledEndTime(undefined);
+      
       // router.refresh()を削除：リアルタイム同期で自動更新される
     } catch (error) {
       const message = getErrorMessage(error);
@@ -175,7 +239,11 @@ export function SchedulesClient({
     try {
       const supabase = createClient();
       
-      // 自分の操作を記録
+      // 楽観的UI更新：即座にローカル状態を更新
+      const deletedSchedule = schedules.find(s => s.id === id);
+      setSchedules(prev => prev.filter(s => s.id !== id));
+      
+      // 自分の操作を記録（リアルタイム更新をスキップするため）
       recordMyOperation(id, 'DELETE');
       
       const { error } = await supabase
@@ -183,9 +251,14 @@ export function SchedulesClient({
         .delete()
         .eq("id", id);
       
-      if (error) throw error;
+      if (error) {
+        // エラー時は元に戻す
+        if (deletedSchedule) {
+          setSchedules(prev => [...prev, deletedSchedule]);
+        }
+        throw error;
+      }
       toast.success("スケジュールを削除しました");
-      // router.refresh()を削除：リアルタイム同期で自動更新される
     } catch (error) {
       const message = getErrorMessage(error);
       toast.error(`削除に失敗しました: ${message}`);
@@ -207,7 +280,7 @@ export function SchedulesClient({
       recordMyOperation(scheduleId, 'UPDATE');
       
       // キャメルケースをスネークケースに変換
-      const dbUpdates: any = {};
+      const dbUpdates: Record<string, any> = {};
       if (updates.eventDate !== undefined) dbUpdates.event_date = updates.eventDate;
       if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
       if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
@@ -217,8 +290,8 @@ export function SchedulesClient({
       if (updates.clientId !== undefined) dbUpdates.client_id = updates.clientId;
       if (updates.driverId !== undefined) dbUpdates.driver_id = updates.driverId;
       
-      const { error } = await supabase
-        .from("schedules_kiro_nextjs")
+      const { error } = await (supabase
+        .from("schedules_kiro_nextjs") as any)
         .update(dbUpdates)
         .eq("id", scheduleId);
       
@@ -292,6 +365,7 @@ export function SchedulesClient({
             schedule={selectedSchedule}
             clients={clients}
             drivers={drivers}
+            vehicles={vehicles}
             open={isFormOpen}
             onOpenChange={setIsFormOpen}
             onSubmit={handleFormSubmit}

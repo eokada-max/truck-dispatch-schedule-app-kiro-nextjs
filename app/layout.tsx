@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
-import { Navigation } from "@/components/layout/Navigation";
+import { Sidebar } from "@/components/layout/Sidebar";
 import "./globals.css";
 
 /**
@@ -39,9 +39,11 @@ export default function RootLayout({
   return (
     <html lang="ja" suppressHydrationWarning>
       <body className={`${inter.className} ${inter.variable}`}>
-        <div className="min-h-screen bg-background">
-          <Navigation />
-          {children}
+        <div className="min-h-screen bg-background flex flex-col md:flex-row">
+          <Sidebar />
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
         </div>
         <Toaster position="top-center" richColors />
       </body>

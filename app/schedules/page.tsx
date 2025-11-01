@@ -1,6 +1,7 @@
 import { getSchedulesByDateRange } from "@/lib/api/schedules";
 import { getAllClients } from "@/lib/api/clients";
 import { getAllDrivers } from "@/lib/api/drivers";
+import { getAllVehicles } from "@/lib/api/vehicles";
 import { formatDate, addDays, getToday } from "@/lib/utils/dateUtils";
 import { SchedulesClient } from "./SchedulesClient";
 
@@ -23,10 +24,11 @@ export default async function SchedulesPage() {
   const endDate = formatDate(addDays(today, 6));
 
   // 並行してデータを取得
-  const [schedules, clients, drivers] = await Promise.all([
+  const [schedules, clients, drivers, vehicles] = await Promise.all([
     getSchedulesByDateRange(startDate, endDate),
     getAllClients(),
     getAllDrivers(),
+    getAllVehicles(),
   ]);
 
   return (
@@ -35,6 +37,7 @@ export default async function SchedulesPage() {
         initialSchedules={schedules}
         clients={clients}
         drivers={drivers}
+        vehicles={vehicles}
         initialStartDate={today}
       />
     </div>

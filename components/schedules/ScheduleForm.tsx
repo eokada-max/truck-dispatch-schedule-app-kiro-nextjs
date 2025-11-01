@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -25,10 +26,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+import type { Vehicle } from "@/types/Vehicle";
+
 interface ScheduleFormProps {
   schedule?: Schedule;
   clients: Client[];
   drivers: Driver[];
+  vehicles?: Vehicle[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: ScheduleFormData) => Promise<void>;
@@ -46,6 +50,7 @@ export function ScheduleForm({
   schedule,
   clients,
   drivers,
+  vehicles = [],
   open,
   onOpenChange,
   onSubmit,
@@ -69,6 +74,7 @@ export function ScheduleForm({
         content: schedule.content || "",
         clientId: schedule.clientId || "",
         driverId: schedule.driverId || "",
+        vehicleId: schedule.vehicleId || "",
       };
     }
 
@@ -89,6 +95,7 @@ export function ScheduleForm({
       content: "",
       clientId: "",
       driverId: "",
+      vehicleId: "",
     };
   }, [schedule, initialDate, initialStartTime, initialEndTime]);
 
@@ -169,6 +176,7 @@ export function ScheduleForm({
         content: "",
         clientId: "",
         driverId: "",
+        vehicleId: "",
       });
       setErrors({});
     } catch (error) {
@@ -204,6 +212,11 @@ export function ScheduleForm({
           <DialogTitle>
             {isEditMode ? "スケジュール編集" : "スケジュール登録"}
           </DialogTitle>
+          <DialogDescription>
+            {isEditMode
+              ? "スケジュールの情報を編集します"
+              : "新しいスケジュールを登録します"}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -373,6 +386,34 @@ export function ScheduleForm({
                     <SelectItem key={driver.id} value={driver.id}>
                       {driver.name}
                       {!driver.isInHouse && " (協力会社)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* 車両 */}
+          <div className="space-y-2">
+            <Label htmlFor="vehicleId">車両</Label>
+            {vehicles.length === 0 ? (
+              <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-md">
+                車両が登録されていません。先に車両を登録してください。
+              </div>
+            ) : (
+              <Select
+                value={formData.vehicleId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, vehicleId: value })
+                }
+              >
+                <SelectTrigger id="vehicleId">
+                  <SelectValue placeholder="車両を選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicles.map((vehicle) => (
+                    <SelectItem key={vehicle.id} value={vehicle.id}>
+                      {vehicle.name} ({vehicle.licensePlate})
                     </SelectItem>
                   ))}
                 </SelectContent>

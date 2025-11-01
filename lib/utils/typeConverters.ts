@@ -28,6 +28,7 @@ export function toSchedule(row: ScheduleRow): Schedule {
     content: row.content,
     clientId: row.client_id,
     driverId: row.driver_id,
+    vehicleId: row.vehicle_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -48,6 +49,7 @@ export function toScheduleInsert(
     content: input.content || null,
     client_id: input.clientId || null,
     driver_id: input.driverId || null,
+    vehicle_id: input.vehicleId || null,
   };
 }
 
@@ -66,6 +68,7 @@ export function toScheduleUpdate(
     content: input.content !== undefined ? input.content : undefined,
     client_id: input.clientId !== undefined ? input.clientId : undefined,
     driver_id: input.driverId !== undefined ? input.driverId : undefined,
+    vehicle_id: input.vehicleId !== undefined ? input.vehicleId : undefined,
   };
 }
 

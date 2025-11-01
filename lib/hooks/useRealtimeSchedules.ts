@@ -51,6 +51,20 @@ export function useRealtimeSchedules({
     onRefresh,
 }: RealtimeSchedulesOptions) {
     const supabase = createClient();
+    
+    // 最新のコールバック参照を保持
+    const onInsertRef = useRef(onInsert);
+    const onUpdateRef = useRef(onUpdate);
+    const onDeleteRef = useRef(onDelete);
+    const onRefreshRef = useRef(onRefresh);
+    
+    // コールバックが変更されたら参照を更新
+    useEffect(() => {
+        onInsertRef.current = onInsert;
+        onUpdateRef.current = onUpdate;
+        onDeleteRef.current = onDelete;
+        onRefreshRef.current = onRefresh;
+    }, [onInsert, onUpdate, onDelete, onRefresh]);
 
     // リアルタイム購読を設定
     useEffect(() => {
@@ -77,10 +91,10 @@ export function useRealtimeSchedules({
 
                         // 自分の操作でない場合のみUI更新
                         if (!isMyOp) {
-                            if (onInsert) {
-                                onInsert(newSchedule);
-                            } else if (onRefresh) {
-                                onRefresh();
+                            if (onInsertRef.current) {
+                                onInsertRef.current(newSchedule);
+                            } else if (onRefreshRef.current) {
+                                onRefreshRef.current();
                             }
 
                             // 通知を表示
@@ -94,8 +108,8 @@ export function useRealtimeSchedules({
                     } catch (error) {
                         console.error('❌ Realtime: INSERT処理エラー', error);
                         // フォールバック: ページ全体をリフレッシュ
-                        if (onRefresh) {
-                            onRefresh();
+                        if (onRefreshRef.current) {
+                            onRefreshRef.current();
                         }
                         toast.error('データの同期に失敗しました。ページを更新してください。', {
                             id: 'realtime-error',
@@ -122,10 +136,10 @@ export function useRealtimeSchedules({
 
                         // 自分の操作でない場合のみUI更新
                         if (!isMyOp) {
-                            if (onUpdate) {
-                                onUpdate(updatedSchedule);
-                            } else if (onRefresh) {
-                                onRefresh();
+                            if (onUpdateRef.current) {
+                                onUpdateRef.current(updatedSchedule);
+                            } else if (onRefreshRef.current) {
+                                onRefreshRef.current();
                             }
 
                             // 通知を表示
@@ -138,8 +152,8 @@ export function useRealtimeSchedules({
                         }
                     } catch (error) {
                         console.error('❌ Realtime: UPDATE処理エラー', error);
-                        if (onRefresh) {
-                            onRefresh();
+                        if (onRefreshRef.current) {
+                            onRefreshRef.current();
                         }
                         toast.error('データの同期に失敗しました。ページを更新してください。', {
                             id: 'realtime-error',
@@ -166,10 +180,10 @@ export function useRealtimeSchedules({
 
                         // 自分の操作でない場合のみUI更新
                         if (!isMyOp) {
-                            if (onDelete) {
-                                onDelete(deletedId);
-                            } else if (onRefresh) {
-                                onRefresh();
+                            if (onDeleteRef.current) {
+                                onDeleteRef.current(deletedId);
+                            } else if (onRefreshRef.current) {
+                                onRefreshRef.current();
                             }
 
                             // 通知を表示
@@ -182,8 +196,8 @@ export function useRealtimeSchedules({
                         }
                     } catch (error) {
                         console.error('❌ Realtime: DELETE処理エラー', error);
-                        if (onRefresh) {
-                            onRefresh();
+                        if (onRefreshRef.current) {
+                            onRefreshRef.current();
                         }
                         toast.error('データの同期に失敗しました。ページを更新してください。', {
                             id: 'realtime-error',
@@ -218,8 +232,8 @@ export function useRealtimeSchedules({
                         action: {
                             label: '更新',
                             onClick: () => {
-                                if (onRefresh) {
-                                    onRefresh();
+                                if (onRefreshRef.current) {
+                                    onRefreshRef.current();
                                 } else {
                                     window.location.reload();
                                 }
@@ -236,7 +250,7 @@ export function useRealtimeSchedules({
             console.log('🔴 Realtime: 購読を解除します');
             channel.unsubscribe();
         };
-    }, [supabase, onInsert, onUpdate, onDelete, onRefresh]);
+    }, []); // 依存配列を空にして、マウント時のみ実行
 }
 
 /**
@@ -253,6 +267,7 @@ function convertDbToSchedule(dbRecord: any): Schedule {
         content: dbRecord.content || '',
         clientId: dbRecord.client_id || '',
         driverId: dbRecord.driver_id || '',
+        vehicleId: dbRecord.vehicle_id || null,
         createdAt: dbRecord.created_at,
         updatedAt: dbRecord.updated_at,
     };

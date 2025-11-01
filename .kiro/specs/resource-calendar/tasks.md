@@ -48,83 +48,121 @@
   - _Requirements: 1.2_
 
 - [ ] 3. リソースカレンダーの基本構造
-- [ ] 3.1 ページとクライアントコンポーネントの作成
+- [x] 3.1 ページとクライアントコンポーネントの作成
+
+
   - app/schedules/resource/page.tsxを作成
   - app/schedules/resource/ResourceSchedulesClient.tsxを作成
   - 初期データ取得とリアルタイム同期を実装
   - _Requirements: 1.1, 8.1, 8.2, 8.3_
 
-- [ ] 3.2 ResourceCalendarコンポーネントの作成
+- [x] 3.2 ResourceCalendarコンポーネントの作成
+
+
+
   - components/schedules/ResourceCalendar.tsxを作成
   - 基本レイアウトとDndContextを実装
   - _Requirements: 1.2, 1.3, 2.1_
 
-- [ ] 3.3 ResourceViewToggleコンポーネントの作成
+- [x] 3.3 ResourceViewToggleコンポーネントの作成
+
+
   - components/schedules/ResourceViewToggle.tsxを作成
   - 車両/ドライバー切り替えタブを実装
   - _Requirements: 1.1_
 
 - [ ] 4. リソース行とセルの実装
-- [ ] 4.1 ResourceRowコンポーネントの作成
+- [x] 4.1 ResourceRowコンポーネントの作成
+
+
   - components/schedules/ResourceRow.tsxを作成
   - リソース行のレイアウトを実装
   - _Requirements: 1.4_
 
-- [ ] 4.2 ResourceCellコンポーネントの作成
+- [x] 4.2 ResourceCellコンポーネントの作成
+
+
   - components/schedules/ResourceCell.tsxを作成
   - ドロップ可能エリアとクリックハンドラーを実装
   - _Requirements: 2.2, 2.3, 4.1_
 
-- [ ] 4.3 ResourceCalendarHeaderコンポーネントの作成
+- [x] 4.3 ResourceCalendarHeaderコンポーネントの作成
+
+
+
   - components/schedules/ResourceCalendarHeader.tsxを作成
   - 日付ヘッダーを実装
   - _Requirements: 1.5_
 
 - [ ] 5. スケジュールカードの実装
-- [ ] 5.1 ResourceScheduleCardコンポーネントの作成
+- [x] 5.1 ResourceScheduleCardコンポーネントの作成
+
+
   - components/schedules/ResourceScheduleCard.tsxを作成
   - ドラッグ可能なスケジュールカードを実装
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 5.2 スケジュールカードのスタイリング
+- [x] 5.2 スケジュールカードのスタイリング
+
+
   - カードのレイアウトとデザインを実装
   - 競合時の視覚的フィードバックを追加
   - _Requirements: 9.2_
 
-- [ ] 6. ドラッグ&ドロップ機能の実装
-- [ ] 6.1 ドラッグハンドラーの実装
+- [x] 6. ドラッグ&ドロップ機能の実装
+
+
+- [x] 6.1 ドラッグハンドラーの実装
+
+
+
   - ResourceCalendarにhandleDragStartを実装
   - ドラッグ中の視覚的フィードバックを追加
   - _Requirements: 2.1_
 
-- [ ] 6.2 ドロップハンドラーの実装
+- [x] 6.2 ドロップハンドラーの実装
+
+
+
   - ResourceCalendarにhandleDragEndを実装
   - リソースと日付の変更処理を実装
   - _Requirements: 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 6.3 楽観的UI更新の実装
+- [x] 6.3 楽観的UI更新の実装
+
+
   - ドロップ時に即座にローカル状態を更新
   - エラー時のロールバック処理を実装
   - _Requirements: 2.5_
 
-- [ ] 7. スケジュール作成・編集機能
-- [ ] 7.1 セルクリックハンドラーの実装
+- [x] 7. スケジュール作成・編集機能
+
+
+- [x] 7.1 セルクリックハンドラーの実装
+
+
   - ResourceCellのonClickで新規作成フォームを開く
   - リソースと日付を自動入力
   - _Requirements: 4.1, 4.2_
+
 
 - [ ] 7.2 スケジュールフォームの拡張
   - 既存のScheduleFormにvehicleId対応を追加
   - 車両選択フィールドを追加
   - _Requirements: 4.3, 4.4_
 
+
 - [ ] 7.3 フォーム送信後の更新処理
   - フォーム送信後にカレンダー表示を更新
   - リアルタイム同期との連携
   - _Requirements: 4.5_
 
-- [ ] 8. 週間ナビゲーション機能
-- [ ] 8.1 DateNavigationの再利用
+- [x] 8. 週間ナビゲーション機能
+
+
+- [x] 8.1 DateNavigationの再利用
+
+
   - 既存のDateNavigationコンポーネントを再利用
   - 週の期間表示を実装
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
@@ -165,13 +203,19 @@
   - タッチ操作対応
   - _Requirements: 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 12. パフォーマンス最適化
-- [ ] 12.1 メモ化の実装
+- [x] 12. パフォーマンス最適化
+
+
+- [x] 12.1 メモ化の実装
+
+
   - useMemoでスケジュールグルーピングを最適化
   - useCallbackでイベントハンドラーを最適化
   - _Requirements: 10.5_
 
-- [ ] 12.2 遅延ロードの実装
+- [x] 12.2 遅延ロードの実装
+
+
   - React.lazyでコンポーネントを遅延ロード
   - _Requirements: 10.1_
 
@@ -180,7 +224,9 @@
   - _Requirements: 10.4_
 
 - [ ] 13. ナビゲーションの統合
-- [ ] 13.1 ナビゲーションメニューの更新
+- [x] 13.1 ナビゲーションメニューの更新
+
+
   - components/layout/Navigation.tsxにリソースカレンダーリンクを追加
   - _Requirements: 1.1_
 

@@ -18,6 +18,11 @@ export function Navigation() {
       icon: Calendar,
     },
     {
+      name: "リソース",
+      href: "/schedules/resource",
+      icon: Calendar,
+    },
+    {
       name: "車両",
       href: "/vehicles",
       icon: Truck,
