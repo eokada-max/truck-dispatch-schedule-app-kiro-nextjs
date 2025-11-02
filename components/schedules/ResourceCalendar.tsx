@@ -9,6 +9,7 @@ import {
   useSensors,
   PointerSensor,
   KeyboardSensor,
+  closestCenter,
   type DragStartEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
@@ -20,6 +21,7 @@ import { ResourceCalendarHeader } from "./ResourceCalendarHeader";
 import { ResourceRow } from "./ResourceRow";
 import { ResourceScheduleCard } from "./ResourceScheduleCard";
 import type { TimeSlot } from "@/lib/utils/timeAxisUtils";
+import { positionToTime, getTimeDifferenceInMinutes, addMinutesToTime } from "@/lib/utils/timeAxisUtils";
 
 type Resource = Vehicle | Driver;
 
@@ -141,36 +143,58 @@ export function ResourceCalendar({
     
     const scheduleData = active.data.current as {
       schedule: Schedule;
-      sourceResourceId: string;
+      sourceResourceId: string | undefined;
       sourceDate: string;
     };
     
     const cellData = over.data.current as {
       resourceId: string;
       date: string;
+      dropPosition?: number;
     };
     
     if (!scheduleData || !cellData) return;
     
-    // リソースまたは日付が変更された場合
-    if (
-      scheduleData.sourceResourceId !== cellData.resourceId ||
-      scheduleData.sourceDate !== cellData.date
-    ) {
+    const hasResourceChanged = scheduleData.sourceResourceId !== cellData.resourceId;
+    const hasDateChanged = scheduleData.sourceDate !== cellData.date;
+    const hasPositionChanged = cellData.dropPosition !== undefined && cellData.dropPosition !== null;
+    
+    // リソース、日付、または時間が変更された場合
+    if (hasResourceChanged || hasDateChanged || hasPositionChanged) {
       const updates: Partial<Schedule> = {};
       
       // 日付変更
-      if (scheduleData.sourceDate !== cellData.date) {
+      if (hasDateChanged) {
         updates.eventDate = cellData.date;
       }
       
       // リソース変更
-      if (scheduleData.sourceResourceId !== cellData.resourceId) {
+      if (hasResourceChanged) {
         if (viewType === "vehicle") {
-          updates.vehicleId = cellData.resourceId;
+          // "unassigned"の場合はnullを設定、それ以外はリソースIDを設定
+          updates.vehicleId = cellData.resourceId === "unassigned" ? null : cellData.resourceId;
         } else {
-          updates.driverId = cellData.resourceId;
+          // "unassigned"の場合はnullを設定、それ以外はリソースIDを設定
+          updates.driverId = cellData.resourceId === "unassigned" ? null : cellData.resourceId;
         }
+      }
+      
+      // 時間変更（同じ日付・リソース内での移動）
+      if (hasPositionChanged && !hasDateChanged && !hasResourceChanged) {
+        // ドロップ位置から新しい開始時刻を計算
+        const newStartTime = positionToTime(cellData.dropPosition!);
+        
+        // 元のスケジュールの長さ（分）を計算
+        const duration = getTimeDifferenceInMinutes(
+          scheduleData.schedule.startTime,
+          scheduleData.schedule.endTime
+        );
+        
+        // 新しい終了時刻を計算
+        const newEndTime = addMinutesToTime(newStartTime, duration);
+        
+        updates.startTime = newStartTime;
+        updates.endTime = newEndTime;
       }
       
       // 更新を実行
@@ -201,6 +225,7 @@ export function ResourceCalendar({
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={closestCenter}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}

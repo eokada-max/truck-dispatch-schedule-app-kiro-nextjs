@@ -162,7 +162,7 @@ export function TimelineCalendar({
           case 'ArrowUp':
             // 15分前に移動
             e.preventDefault();
-            const newStartMinutesUp = Math.max(9 * 60, startMinutes - 15);
+            const newStartMinutesUp = Math.max(0, startMinutes - 15);
             newStartTime = `${String(Math.floor(newStartMinutesUp / 60)).padStart(2, '0')}:${String(newStartMinutesUp % 60).padStart(2, '0')}:00`;
             newEndTime = `${String(Math.floor((newStartMinutesUp + duration) / 60)).padStart(2, '0')}:${String((newStartMinutesUp + duration) % 60).padStart(2, '0')}:00`;
             break;
@@ -246,8 +246,8 @@ export function TimelineCalendar({
     [startDate, endDate]
   );
 
-  // 時間軸を生成（9:00-24:00、1時間刻み）
-  const timeSlots = useMemo(() => generateTimeSlots(9, 24, 60), []);
+  // 時間軸を生成（0:00-24:00、1時間刻み）
+  const timeSlots = useMemo(() => generateTimeSlots(0, 24, 60), []);
 
   // クライアントとドライバーのマップを作成（高速検索用）
   const clientsMap = useMemo(() => {
@@ -283,8 +283,8 @@ export function TimelineCalendar({
     const endMinutes = timeToMinutes(schedule.endTime);
     const duration = endMinutes - startMinutes;
 
-    // 9:00を基準点（0分）とする
-    const baseMinutes = 9 * 60;
+    // 0:00を基準点（0分）とする
+    const baseMinutes = 0;
     const topOffset = startMinutes - baseMinutes;
 
     // 1時間 = 60px として計算
@@ -304,15 +304,15 @@ export function TimelineCalendar({
     const pixelsPerMinute = 1; // 60px / 60分
     const totalMinutes = Math.floor(relativeY / pixelsPerMinute);
 
-    // 9:00を基準点とする
-    const baseMinutes = 9 * 60;
+    // 0:00を基準点とする
+    const baseMinutes = 0;
     const actualMinutes = baseMinutes + totalMinutes;
 
     // 15分単位にスナップ
     const snappedMinutes = Math.round(actualMinutes / 15) * 15;
 
-    // 時間範囲を制限（9:00-24:00）
-    const clampedMinutes = Math.max(9 * 60, Math.min(24 * 60, snappedMinutes));
+    // 時間範囲を制限（0:00-24:00）
+    const clampedMinutes = Math.max(0, Math.min(24 * 60, snappedMinutes));
 
     const hours = Math.floor(clampedMinutes / 60);
     const minutes = clampedMinutes % 60;
@@ -363,7 +363,7 @@ export function TimelineCalendar({
 
     const originalStartMinutes = timeToMinutes(schedule.startTime);
     const newStartMinutes = originalStartMinutes + minutesDelta;
-    const clampedStartMinutes = Math.max(9 * 60, Math.min(23 * 60, newStartMinutes));
+    const clampedStartMinutes = Math.max(0, Math.min(23 * 60, newStartMinutes));
 
     const newStartHours = Math.floor(clampedStartMinutes / 60);
     const newStartMins = clampedStartMinutes % 60;
@@ -431,8 +431,8 @@ export function TimelineCalendar({
     const originalStartMinutes = timeToMinutes(schedule.startTime);
     const newStartMinutes = originalStartMinutes + minutesDelta;
 
-    // 時間範囲を制限（9:00-24:00）
-    const clampedStartMinutes = Math.max(9 * 60, Math.min(23 * 60, newStartMinutes));
+    // 時間範囲を制限（0:00-24:00）
+    const clampedStartMinutes = Math.max(0, Math.min(23 * 60, newStartMinutes));
 
     const newStartHours = Math.floor(clampedStartMinutes / 60);
     const newStartMins = clampedStartMinutes % 60;
@@ -842,15 +842,15 @@ export function TimelineCalendar({
     const pixelsPerMinute = 1;
     const totalMinutes = Math.floor(relativeY / pixelsPerMinute);
 
-    // 9:00を基準点とする
-    const baseMinutes = 9 * 60;
+    // 0:00を基準点とする
+    const baseMinutes = 0;
     const actualMinutes = baseMinutes + totalMinutes;
 
     // 1時間単位にスナップ（クリックした時間帯の開始時刻）
     const snappedMinutes = Math.floor(actualMinutes / 60) * 60;
 
-    // 時間範囲を制限（9:00-23:00）
-    const clampedMinutes = Math.max(9 * 60, Math.min(23 * 60, snappedMinutes));
+    // 時間範囲を制限（0:00-23:00）
+    const clampedMinutes = Math.max(0, Math.min(23 * 60, snappedMinutes));
 
     const startHours = Math.floor(clampedMinutes / 60);
     const startMins = clampedMinutes % 60;

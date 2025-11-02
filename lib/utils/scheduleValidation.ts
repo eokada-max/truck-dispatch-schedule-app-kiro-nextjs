@@ -46,13 +46,13 @@ export function isValidTimeRange(startTime: string, endTime: string): boolean {
 }
 
 /**
- * 営業時間内かチェック（9:00-24:00）
+ * 営業時間内かチェック（0:00-24:00）
  */
 export function isWithinBusinessHours(startTime: string, endTime: string): boolean {
   const startMinutes = timeToMinutes(startTime);
   const endMinutes = timeToMinutes(endTime);
   
-  const businessStart = 9 * 60; // 9:00
+  const businessStart = 0; // 0:00
   const businessEnd = 24 * 60; // 24:00
   
   return startMinutes >= businessStart && endMinutes <= businessEnd;
@@ -101,7 +101,7 @@ export function validateScheduleUpdate(
   
   // 営業時間の検証
   if (!isWithinBusinessHours(newStartTime, newEndTime)) {
-    errors.push("営業時間外です（9:00-24:00）");
+    errors.push("営業時間外です（0:00-24:00）");
   }
   
   // 最小時間長の検証

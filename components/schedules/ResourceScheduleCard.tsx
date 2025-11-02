@@ -29,11 +29,11 @@ export function ResourceScheduleCard({
   // ドラッグ可能にする
   const resourceId = viewType === "vehicle" ? schedule.vehicleId : schedule.driverId;
   
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging, transform } = useDraggable({
     id: `schedule-${schedule.id}`,
     data: {
       schedule,
-      sourceResourceId: resourceId,
+      sourceResourceId: resourceId || "unassigned",
       sourceDate: schedule.eventDate,
     },
   });
@@ -53,7 +53,7 @@ export function ResourceScheduleCard({
       suppressHydrationWarning
       className={`absolute rounded border text-xs transition-all hover:shadow-md overflow-hidden ${
         isDragging
-          ? "opacity-50 cursor-grabbing"
+          ? "opacity-50 cursor-grabbing pointer-events-none"
           : "cursor-grab hover:cursor-grab"
       } ${
         isConflicting

@@ -62,62 +62,54 @@ export function ConflictWarningDialog({
           </div>
         </AlertDialogHeader>
         
-        <div className="text-base text-muted-foreground">
-          {(driverName || vehicleName) && (
-            <div className="flex items-center gap-2 mb-2">
+        <div className="text-base text-muted-foreground space-y-2">
+          {conflictCheck.driverConflicts.length > 0 && driverName && (
+            <div className="flex items-center gap-2">
               <User className="w-4 h-4" />
-              <span className="font-semibold">
-                {resourceType === "driver" ? driverName : vehicleName}
-              </span>
-              <span>
-                が同じ時間帯に複数の{resourceType === "driver" ? "配送" : "使用"}を担当することになります。
-              </span>
+              <span className="font-semibold">{driverName}</span>
+              <span>が同じ時間帯に複数の配送を担当することになります。</span>
+            </div>
+          )}
+          {conflictCheck.vehicleConflicts.length > 0 && vehicleName && (
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4" />
+              <span className="font-semibold">{vehicleName}</span>
+              <span>が同じ時間帯に複数のスケジュールで使用されます。</span>
             </div>
           )}
           <div>
             <span className="text-destructive font-semibold">
-              {conflictingSchedules.length}件の競合
+              {conflictCheck.driverConflicts.length > 0 && `ドライバー: ${conflictCheck.driverConflicts.length}件`}
+              {conflictCheck.driverConflicts.length > 0 && conflictCheck.vehicleConflicts.length > 0 && '、'}
+              {conflictCheck.vehicleConflicts.length > 0 && `車両: ${conflictCheck.vehicleConflicts.length}件`}
             </span>
-            が見つかりました。続行しますか？
+            の競合が見つかりました。続行しますか？
           </div>
         </div>
 
         <div className="space-y-4 my-4">
-          {/* 重大な競合 */}
-          {severeConflicts.length > 0 && (
+          {/* ドライバーの競合 */}
+          {conflictCheck.driverConflicts.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-semibold text-destructive">
-                <AlertTriangle className="w-4 h-4" />
-                重大な競合（60分以上重複）
+                <User className="w-4 h-4" />
+                ドライバーの競合（{conflictCheck.driverConflicts.length}件）
               </div>
-              {severeConflicts.map((conflict, index) => (
-                <ConflictItem key={index} conflict={conflict} severity={3} />
+              {conflictCheck.driverConflicts.map((conflict, index) => (
+                <ConflictItem key={`driver-${index}`} conflict={conflict} severity={getConflictSeverity(conflict)} type="driver" />
               ))}
             </div>
           )}
 
-          {/* 中程度の競合 */}
-          {moderateConflicts.length > 0 && (
+          {/* 車両の競合 */}
+          {conflictCheck.vehicleConflicts.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-semibold text-orange-600">
                 <AlertTriangle className="w-4 h-4" />
-                注意が必要な競合（30-60分重複）
+                車両の競合（{conflictCheck.vehicleConflicts.length}件）
               </div>
-              {moderateConflicts.map((conflict, index) => (
-                <ConflictItem key={index} conflict={conflict} severity={2} />
-              ))}
-            </div>
-          )}
-
-          {/* 軽微な競合 */}
-          {minorConflicts.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold text-yellow-600">
-                <AlertTriangle className="w-4 h-4" />
-                軽微な競合（30分未満重複）
-              </div>
-              {minorConflicts.map((conflict, index) => (
-                <ConflictItem key={index} conflict={conflict} severity={1} />
+              {conflictCheck.vehicleConflicts.map((conflict, index) => (
+                <ConflictItem key={`vehicle-${index}`} conflict={conflict} severity={getConflictSeverity(conflict)} type="vehicle" />
               ))}
             </div>
           )}
@@ -145,9 +137,11 @@ export function ConflictWarningDialog({
 function ConflictItem({
   conflict,
   severity,
+  type,
 }: {
   conflict: ConflictDetail;
   severity: number;
+  type: "driver" | "vehicle";
 }) {
   const bgColor =
     severity === 3
@@ -155,6 +149,8 @@ function ConflictItem({
       : severity === 2
       ? "bg-orange-50 border-orange-300"
       : "bg-yellow-50 border-yellow-300";
+
+  const typeLabel = type === "driver" ? "ドライバー" : "車両";
 
   return (
     <div className={`p-3 rounded-lg border ${bgColor}`}>
@@ -178,7 +174,7 @@ function ConflictItem({
       </div>
       <div className="mt-2 text-xs font-semibold">
         <span className="text-destructive">
-          重複: {conflict.overlapStart.slice(0, 5)} - {conflict.overlapEnd.slice(0, 5)}
+          {typeLabel}重複: {conflict.overlapStart.slice(0, 5)} - {conflict.overlapEnd.slice(0, 5)}
         </span>
         <span className="text-muted-foreground ml-2">
           ({conflict.overlapMinutes}分)

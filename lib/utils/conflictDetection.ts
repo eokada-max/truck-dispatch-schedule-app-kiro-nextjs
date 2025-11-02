@@ -19,6 +19,10 @@ export interface ConflictCheck {
   message: string;
   /** 競合の詳細情報 */
   details: ConflictDetail[];
+  /** ドライバーの競合 */
+  driverConflicts: ConflictDetail[];
+  /** 車両の競合 */
+  vehicleConflicts: ConflictDetail[];
 }
 
 /**
@@ -127,27 +131,13 @@ export function checkConflict(
   newEndTime: string,
   allSchedules: Schedule[]
 ): ConflictCheck {
-  // ドライバーが割り当てられていない場合は競合なし
-  if (!schedule.driverId) {
-    return {
-      hasConflict: false,
-      conflictingSchedules: [],
-      message: '',
-      details: [],
-    };
-  }
+  const driverConflicts: ConflictDetail[] = [];
+  const vehicleConflicts: ConflictDetail[] = [];
 
-  const conflicts: ConflictDetail[] = [];
-
-  // 同じドライバー、同じ日付のスケジュールをチェック
+  // 同じ日付のスケジュールをチェック
   for (const otherSchedule of allSchedules) {
     // 自分自身はスキップ
     if (otherSchedule.id === schedule.id) {
-      continue;
-    }
-
-    // 異なるドライバーはスキップ
-    if (otherSchedule.driverId !== schedule.driverId) {
       continue;
     }
 
@@ -157,40 +147,76 @@ export function checkConflict(
     }
 
     // 時間範囲の重複をチェック
-    if (timeRangesOverlap(
+    const hasTimeOverlap = timeRangesOverlap(
       otherSchedule.startTime,
       otherSchedule.endTime,
       newStartTime,
       newEndTime
-    )) {
-      const overlap = calculateOverlap(
-        otherSchedule.startTime,
-        otherSchedule.endTime,
-        newStartTime,
-        newEndTime
-      );
+    );
 
-      if (overlap) {
-        conflicts.push({
-          schedule: otherSchedule,
-          overlapMinutes: overlap.minutes,
-          overlapStart: overlap.start,
-          overlapEnd: overlap.end,
-        });
-      }
+    if (!hasTimeOverlap) {
+      continue;
+    }
+
+    const overlap = calculateOverlap(
+      otherSchedule.startTime,
+      otherSchedule.endTime,
+      newStartTime,
+      newEndTime
+    );
+
+    if (!overlap) {
+      continue;
+    }
+
+    // ドライバーの競合チェック
+    if (schedule.driverId && otherSchedule.driverId === schedule.driverId) {
+      driverConflicts.push({
+        schedule: otherSchedule,
+        overlapMinutes: overlap.minutes,
+        overlapStart: overlap.start,
+        overlapEnd: overlap.end,
+      });
+    }
+
+    // 車両の競合チェック
+    if (schedule.vehicleId && otherSchedule.vehicleId === schedule.vehicleId) {
+      vehicleConflicts.push({
+        schedule: otherSchedule,
+        overlapMinutes: overlap.minutes,
+        overlapStart: overlap.start,
+        overlapEnd: overlap.end,
+      });
     }
   }
 
-  const hasConflict = conflicts.length > 0;
-  const message = hasConflict
-    ? `${conflicts.length}件の競合するスケジュールがあります。同じドライバーが同じ時間帯に複数の配送を担当することになります。`
+  const allConflicts = [...driverConflicts, ...vehicleConflicts];
+  const hasConflict = allConflicts.length > 0;
+
+  // メッセージを生成
+  const messages: string[] = [];
+  if (driverConflicts.length > 0) {
+    messages.push(`ドライバーの競合: ${driverConflicts.length}件`);
+  }
+  if (vehicleConflicts.length > 0) {
+    messages.push(`車両の競合: ${vehicleConflicts.length}件`);
+  }
+  const message = messages.length > 0
+    ? `${messages.join('、')}。同じリソースが同じ時間帯に複数のスケジュールに割り当てられています。`
     : '';
+
+  // 重複を除去（同じスケジュールがドライバーと車両の両方で競合する場合）
+  const uniqueConflictingSchedules = Array.from(
+    new Map(allConflicts.map(c => [c.schedule.id, c.schedule])).values()
+  );
 
   return {
     hasConflict,
-    conflictingSchedules: conflicts.map(c => c.schedule),
+    conflictingSchedules: uniqueConflictingSchedules,
     message,
-    details: conflicts,
+    details: allConflicts,
+    driverConflicts,
+    vehicleConflicts,
   };
 }
 

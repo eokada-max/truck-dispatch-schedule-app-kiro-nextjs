@@ -252,17 +252,23 @@ export function ResourceSchedulesClient({
     );
 
     try {
+      // 元のスケジュールと更新内容をマージ
+      const updatedSchedule = {
+        ...originalSchedule,
+        ...updates,
+      };
+
       // UpdateScheduleInput形式に変換
       const updateInput: UpdateScheduleInput = {
-        eventDate: updates.eventDate,
-        startTime: updates.startTime,
-        endTime: updates.endTime,
-        title: updates.title,
-        destinationAddress: updates.destinationAddress,
-        content: updates.content ?? undefined,
-        clientId: updates.clientId ?? undefined,
-        driverId: updates.driverId ?? undefined,
-        vehicleId: updates.vehicleId ?? undefined,
+        eventDate: updatedSchedule.eventDate,
+        startTime: updatedSchedule.startTime,
+        endTime: updatedSchedule.endTime,
+        title: updatedSchedule.title,
+        destinationAddress: updatedSchedule.destinationAddress,
+        content: updatedSchedule.content,
+        clientId: updatedSchedule.clientId,
+        driverId: updatedSchedule.driverId,
+        vehicleId: updatedSchedule.vehicleId,
       };
 
       // 自分の操作を記録（リアルタイム同期で重複通知を防ぐ）
@@ -276,11 +282,14 @@ export function ResourceSchedulesClient({
       if (updates.eventDate) {
         messages.push("日付を変更");
       }
-      if (updates.vehicleId) {
+      if (updates.vehicleId !== undefined) {
         messages.push("車両を変更");
       }
-      if (updates.driverId) {
+      if (updates.driverId !== undefined) {
         messages.push("ドライバーを変更");
+      }
+      if (updates.startTime || updates.endTime) {
+        messages.push("時間を変更");
       }
 
       toast.success(`スケジュールを更新しました（${messages.join("、")}）`);

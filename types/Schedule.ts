@@ -40,10 +40,10 @@ export interface UpdateScheduleInput {
   endTime?: string;
   title?: string;
   destinationAddress?: string;
-  content?: string;
-  clientId?: string;
-  driverId?: string;
-  vehicleId?: string;
+  content?: string | null;
+  clientId?: string | null;
+  driverId?: string | null;
+  vehicleId?: string | null;
 }
 
 /**
