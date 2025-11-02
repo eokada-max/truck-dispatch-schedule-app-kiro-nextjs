@@ -69,6 +69,7 @@ export function ResourceRow({
           const dateStr = format(date, "yyyy-MM-dd");
           // loadingDatetimeから日付部分を抽出してフィルタリング
           const daySchedules = schedules.filter(s => {
+            if (!s.loadingDatetime) return false;
             const scheduleDate = s.loadingDatetime.split('T')[0];
             return scheduleDate === dateStr;
           });

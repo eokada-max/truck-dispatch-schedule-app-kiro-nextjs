@@ -18,6 +18,7 @@
 - [x] 2.2 データ変換ロジックを実装する
   - データベース形式（スネークケース）からアプリ形式（キャメルケース）に変換
   - `convertDbToSchedule`関数を実装
+  - **Bug Fix (2024-11-02)**: 新スキーマ（loading_datetime, delivery_datetime）に対応するよう更新
   - _Requirements: 1.1, 1.2, 1.3_
 
 - [x] 2.3 コールバック関数を実装する
@@ -131,6 +132,19 @@
 - [ ]* 10.2 統合テストを作成する
   - 複数クライアント間の同期テスト
   - _Requirements: All_
+
+## Bug Fixes
+
+- [x] BUG-1: スキーマ移行後のリアルタイム同期エラー修正
+- [x] BUG-1.1 convertDbToSchedule関数を新スキーマに対応
+  - 旧スキーマ（event_date, start_time, end_time）から新スキーマ（loading_datetime, delivery_datetime）に変換ロジックを更新
+  - すべての新フィールド（loading_location_id, delivery_location_id, cargo, billing_date, fare等）をマッピング
+  - _Issue: リアルタイム更新時にloadingDatetimeがundefinedになり、カードが非表示になる問題を修正_
+
+- [x] BUG-1.2 SchedulesClientの安全性チェックを追加
+  - loadingDatetimeが存在しないスケジュールをフィルタリング
+  - 範囲外警告の計算時にエラーが発生しないよう修正
+  - _Issue: TypeError: Cannot read properties of undefined (reading 'split')を修正_
 
 ## Phase 7: 追加機能（オプション）
 

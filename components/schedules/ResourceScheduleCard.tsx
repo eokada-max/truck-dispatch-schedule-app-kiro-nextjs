@@ -30,6 +30,10 @@ export function ResourceScheduleCard({
   const resourceId = viewType === "vehicle" ? schedule.vehicleId : schedule.driverId;
   
   // loadingDatetimeから日付と時間を抽出
+  if (!schedule.loadingDatetime || !schedule.deliveryDatetime) {
+    return null;
+  }
+  
   const eventDate = schedule.loadingDatetime.split('T')[0];
   const startTime = schedule.loadingDatetime.split('T')[1].slice(0, 5); // HH:mm
   const endTime = schedule.deliveryDatetime.split('T')[1].slice(0, 5); // HH:mm
@@ -46,7 +50,7 @@ export function ResourceScheduleCard({
   // 時間軸上の位置とサイズを計算
   const position = calculateSchedulePosition(startTime, endTime);
   const cardWidth = parseFloat(position.width.replace('%', ''));
-  const isNarrow = cardWidth < 15; // 15%未満の場合は狭いとみなす
+  const isNarrow = cardWidth < 8; // 8%未満の場合は狭いとみなす
 
   return (
     <div
@@ -93,12 +97,10 @@ export function ResourceScheduleCard({
               </span>
             </div>
 
-            {/* 荷物情報 */}
-            {cardWidth > 20 && schedule.cargo && (
-              <div className="font-medium text-[10px] truncate flex-1">
-                {schedule.cargo}
-              </div>
-            )}
+            {/* 積地⇒着地 */}
+            <div className="font-medium text-[10px] truncate flex-1">
+              {schedule.loadingLocationName || '積地'} ⇒ {schedule.deliveryLocationName || '着地'}
+            </div>
 
             {/* 競合警告 */}
             {isConflicting && (

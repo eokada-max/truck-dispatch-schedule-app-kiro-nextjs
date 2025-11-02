@@ -17,28 +17,48 @@ interface RealtimeSchedulesOptions {
     onRefresh?: () => void;
 }
 
-// 最近の操作を記録するグローバルSet（自分の操作を除外するため）
-const recentOperations = new Set<string>();
+// 最近の操作を記録するグローバルMap（自分の操作を除外するため）
+// タイムスタンプも記録して、より正確な判定を行う
+const recentOperations = new Map<string, number>();
 
 /**
- * 自分の操作を記録（3秒間保持）
+ * 自分の操作を記録（5秒間保持）
+ * 連続操作に対応するため、保持時間を延長
  */
 export function recordMyOperation(scheduleId: string, operation: 'INSERT' | 'UPDATE' | 'DELETE') {
     const key = `${operation}:${scheduleId}`;
-    recentOperations.add(key);
+    const timestamp = Date.now();
+    recentOperations.set(key, timestamp);
 
-    // 3秒後に削除
+    // 5秒後に削除（連続操作を考慮して延長）
     setTimeout(() => {
-        recentOperations.delete(key);
-    }, 3000);
+        // タイムスタンプが一致する場合のみ削除（上書きされていない場合）
+        if (recentOperations.get(key) === timestamp) {
+            recentOperations.delete(key);
+        }
+    }, 5000);
 }
 
 /**
  * 自分の操作かどうかをチェック
+ * 5秒以内の操作のみ「自分の操作」と判定
  */
 function isMyOperation(scheduleId: string, operation: 'INSERT' | 'UPDATE' | 'DELETE'): boolean {
     const key = `${operation}:${scheduleId}`;
-    return recentOperations.has(key);
+    const timestamp = recentOperations.get(key);
+    
+    if (!timestamp) {
+        return false;
+    }
+    
+    // 5秒以上経過している場合は無効
+    const elapsed = Date.now() - timestamp;
+    if (elapsed > 5000) {
+        recentOperations.delete(key);
+        return false;
+    }
+    
+    return true;
 }
 
 /**
@@ -133,6 +153,7 @@ export function useRealtimeSchedules({
 
                         // 自分の操作かチェック
                         const isMyOp = isMyOperation(updatedSchedule.id, 'UPDATE');
+                        console.log(`🔍 Realtime UPDATE: scheduleId=${updatedSchedule.id}, isMyOp=${isMyOp}`);
 
                         // 自分の操作でない場合のみUI更新
                         if (!isMyOp) {
@@ -259,15 +280,20 @@ export function useRealtimeSchedules({
 function convertDbToSchedule(dbRecord: any): Schedule {
     return {
         id: dbRecord.id,
-        eventDate: dbRecord.event_date,
-        startTime: dbRecord.start_time,
-        endTime: dbRecord.end_time,
-        title: dbRecord.title,
-        destinationAddress: dbRecord.destination_address,
-        content: dbRecord.content || '',
-        clientId: dbRecord.client_id || '',
-        driverId: dbRecord.driver_id || '',
+        clientId: dbRecord.client_id || null,
+        driverId: dbRecord.driver_id || null,
         vehicleId: dbRecord.vehicle_id || null,
+        loadingDatetime: dbRecord.loading_datetime,
+        loadingLocationId: dbRecord.loading_location_id || null,
+        loadingLocationName: dbRecord.loading_location_name || null,
+        loadingAddress: dbRecord.loading_address || null,
+        deliveryDatetime: dbRecord.delivery_datetime,
+        deliveryLocationId: dbRecord.delivery_location_id || null,
+        deliveryLocationName: dbRecord.delivery_location_name || null,
+        deliveryAddress: dbRecord.delivery_address || null,
+        cargo: dbRecord.cargo || null,
+        billingDate: dbRecord.billing_date || null,
+        fare: dbRecord.fare || null,
         createdAt: dbRecord.created_at,
         updatedAt: dbRecord.updated_at,
     };

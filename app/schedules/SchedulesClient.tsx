@@ -7,7 +7,7 @@ import type { Client } from "@/types/Client";
 import type { Driver } from "@/types/Driver";
 import { DateNavigation } from "@/components/schedules/DateNavigation";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { addDays, getToday, getMonday, getSunday } from "@/lib/utils/dateUtils";
 // Client側ではブラウザ用のAPI関数を使用
 import { createClient } from "@/lib/supabase/client";
@@ -70,6 +70,7 @@ export function SchedulesClient({
     
     // 取得済みスケジュールの日付範囲を計算
     const scheduleDates = schedules
+      .filter(s => s.loadingDatetime) // loadingDatetimeが存在するもののみ
       .map(s => new Date(s.loadingDatetime.split('T')[0]));
     if (scheduleDates.length === 0) return;
     const minDate = new Date(Math.min(...scheduleDates.map(d => d.getTime())));
@@ -181,12 +182,14 @@ export function SchedulesClient({
           fare: data.fare ? Number(data.fare) : null,
         };
         
+        // 自分の操作を記録（楽観的UI更新の前）
+        recordMyOperation(selectedSchedule.id, 'UPDATE');
+        console.log(`📝 自分の操作を記録: scheduleId=${selectedSchedule.id}, operation=UPDATE`);
+        
+        // 楽観的UI更新
         setSchedules(prev =>
           prev.map(s => s.id === selectedSchedule.id ? updatedSchedule : s)
         );
-        
-        // 自分の操作を記録（リアルタイム更新をスキップするため）
-        recordMyOperation(selectedSchedule.id, 'UPDATE');
         
         const { error } = await (supabase
           .from("schedules_kiro_nextjs") as any)
@@ -229,6 +232,11 @@ export function SchedulesClient({
         // 楽観的UI更新：即座にローカル状態を更新
         if (insertedData) {
           const newSchedule: Schedule = toSchedule(insertedData);
+          
+          // 自分の操作を記録（楽観的UI更新の前）
+          recordMyOperation(insertedData.id, 'INSERT');
+          console.log(`📝 自分の操作を記録: scheduleId=${insertedData.id}, operation=INSERT`);
+          
           console.log('🟢 楽観的UI更新: 新しいスケジュールを追加', newSchedule);
           setSchedules(prev => {
             console.log('🟢 現在のスケジュール数:', prev.length);
@@ -236,9 +244,6 @@ export function SchedulesClient({
             console.log('🟢 更新後のスケジュール数:', updated.length);
             return updated;
           });
-          
-          // 自分の操作を記録（リアルタイム更新をスキップするため）
-          recordMyOperation(insertedData.id, 'INSERT');
         }
         
         toast.success("スケジュールを登録しました");
@@ -264,12 +269,13 @@ export function SchedulesClient({
     try {
       const supabase = createClient();
       
+      // 自分の操作を記録（楽観的UI更新の前）
+      recordMyOperation(id, 'DELETE');
+      console.log(`📝 自分の操作を記録: scheduleId=${id}, operation=DELETE`);
+      
       // 楽観的UI更新：即座にローカル状態を更新
       const deletedSchedule = schedules.find(s => s.id === id);
       setSchedules(prev => prev.filter(s => s.id !== id));
-      
-      // 自分の操作を記録（リアルタイム更新をスキップするため）
-      recordMyOperation(id, 'DELETE');
       
       const { error } = await supabase
         .from("schedules_kiro_nextjs")
@@ -294,15 +300,16 @@ export function SchedulesClient({
   // スケジュール更新ハンドラー（ドラッグ&ドロップ用）
   const handleScheduleUpdate = async (scheduleId: string, updates: Partial<Schedule>) => {
     try {
+      // 自分の操作を記録（楽観的UI更新の前）
+      recordMyOperation(scheduleId, 'UPDATE');
+      console.log(`📝 自分の操作を記録: scheduleId=${scheduleId}, operation=UPDATE`);
+      
       // 楽観的UI更新：即座にローカル状態を更新
       setSchedules(prev =>
         prev.map(s => s.id === scheduleId ? { ...s, ...updates } : s)
       );
       
       const supabase = createClient();
-      
-      // 自分の操作を記録（リアルタイム更新をスキップするため）
-      recordMyOperation(scheduleId, 'UPDATE');
       
       // キャメルケースをスネークケースに変換
       const dbUpdates: Record<string, any> = {};
@@ -337,6 +344,20 @@ export function SchedulesClient({
     }
   };
 
+  // 手動同期ハンドラー
+  const [isSyncing, setIsSyncing] = useState(false);
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      // ページ全体をリフレッシュして最新データを取得
+      window.location.reload();
+    } catch (error) {
+      console.error('同期エラー:', error);
+      toast.error('同期に失敗しました');
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <>
       {/* ツールバー */}
@@ -350,11 +371,23 @@ export function SchedulesClient({
               onToday={handleToday}
             />
             
-            <Button onClick={handleCreateClick} className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">スケジュール登録</span>
-              <span className="sm:hidden">登録</span>
-            </Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button 
+                onClick={handleSync} 
+                variant="outline" 
+                className="flex-1 sm:flex-initial"
+                disabled={isSyncing}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">同期</span>
+              </Button>
+              
+              <Button onClick={handleCreateClick} className="flex-1 sm:flex-initial">
+                <Plus className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">スケジュール登録</span>
+                <span className="sm:hidden">登録</span>
+              </Button>
+            </div>
           </div>
         </div>
       </div>

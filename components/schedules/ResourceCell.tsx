@@ -134,6 +134,8 @@ export function ResourceCell({
             : undefined;
 
           // loadingDatetimeから時間を抽出
+          if (!schedule.loadingDatetime || !schedule.deliveryDatetime) return null;
+          
           const scheduleStartTime = schedule.loadingDatetime.split('T')[1].slice(0, 5);
           const scheduleEndTime = schedule.deliveryDatetime.split('T')[1].slice(0, 5);
           
@@ -141,6 +143,7 @@ export function ResourceCell({
           const isConflicting = schedules.some(
             (otherSchedule) => {
               if (otherSchedule.id === schedule.id) return false;
+              if (!otherSchedule.loadingDatetime || !otherSchedule.deliveryDatetime) return false;
               const otherStartTime = otherSchedule.loadingDatetime.split('T')[1].slice(0, 5);
               const otherEndTime = otherSchedule.deliveryDatetime.split('T')[1].slice(0, 5);
               return timeRangesOverlap(

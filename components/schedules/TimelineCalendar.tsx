@@ -278,7 +278,7 @@ export function TimelineCalendar({
     dates.forEach((date) => {
       const dateStr = formatDate(date);
       const daySchedules = optimisticSchedules.filter(
-        (schedule) => schedule.loadingDatetime.split('T')[0] === dateStr
+        (schedule) => schedule.loadingDatetime && schedule.loadingDatetime.split('T')[0] === dateStr
       );
       grouped.set(dateStr, daySchedules);
     });

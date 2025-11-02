@@ -14,7 +14,7 @@ import { ScheduleForm } from "@/components/schedules/ScheduleForm";
 import { DateNavigation } from "@/components/schedules/DateNavigation";
 import { ResourceFilter, type ResourceFilterOptions } from "@/components/schedules/ResourceFilter";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { useRealtimeSchedules, recordMyOperation } from "@/lib/hooks/useRealtimeSchedules";
 import { updateSchedule, createSchedule, deleteSchedule } from "@/lib/api/schedules.client";
 import { addDays, startOfWeek, endOfWeek } from "date-fns";
@@ -170,12 +170,17 @@ export function ResourceSchedulesClient({
       if (selectedSchedule) {
         // 編集モード
         const updateInput: UpdateScheduleInput = {
-          eventDate: data.eventDate,
-          startTime: data.startTime,
-          endTime: data.endTime,
-          title: data.title,
-          destinationAddress: data.destinationAddress,
-          content: data.content || undefined,
+          loadingDatetime: data.loadingDatetime,
+          deliveryDatetime: data.deliveryDatetime,
+          loadingLocationId: data.loadingLocationId || undefined,
+          loadingLocationName: data.loadingLocationName || undefined,
+          loadingAddress: data.loadingAddress || undefined,
+          deliveryLocationId: data.deliveryLocationId || undefined,
+          deliveryLocationName: data.deliveryLocationName || undefined,
+          deliveryAddress: data.deliveryAddress || undefined,
+          cargo: data.cargo || undefined,
+          billingDate: data.billingDate || undefined,
+          fare: data.fare ? Number(data.fare) : undefined,
           clientId: data.clientId || undefined,
           driverId: data.driverId || undefined,
           vehicleId: data.vehicleId || undefined,
@@ -196,11 +201,16 @@ export function ResourceSchedulesClient({
           ...data,
           vehicleId: viewType === "vehicle" ? formInitialData.resourceId : data.vehicleId,
           driverId: viewType === "driver" ? formInitialData.resourceId : data.driverId,
+          fare: data.fare ? Number(data.fare) : undefined,
         };
 
         const newSchedule = await createSchedule(createInput);
+        
+        // 自分の操作を記録（楽観的UI更新の前）
         recordMyOperation(newSchedule.id, "INSERT");
+        console.log(`📝 自分の操作を記録: scheduleId=${newSchedule.id}, operation=INSERT`);
 
+        // 楽観的UI更新
         setSchedules((prev) => [...prev, newSchedule]);
 
         toast.success("スケジュールを作成しました");
@@ -216,10 +226,15 @@ export function ResourceSchedulesClient({
   // スケジュール削除ハンドラー
   const handleDelete = async (id: string) => {
     try {
+      // 自分の操作を記録（楽観的UI更新の前）
       recordMyOperation(id, "DELETE");
-      await deleteSchedule(id);
+      console.log(`📝 自分の操作を記録: scheduleId=${id}, operation=DELETE`);
 
+      // 楽観的UI更新
       setSchedules((prev) => prev.filter((s) => s.id !== id));
+
+      // サーバーに削除リクエスト
+      await deleteSchedule(id);
 
       toast.success("スケジュールを削除しました");
       setIsFormOpen(false);
@@ -241,14 +256,19 @@ export function ResourceSchedulesClient({
       return;
     }
 
+    // 自分の操作を記録（リアルタイム同期で重複通知を防ぐ）
+    // 重要: 楽観的UI更新の前に記録する
+    recordMyOperation(scheduleId, "UPDATE");
+    console.log(`📝 自分の操作を記録: scheduleId=${scheduleId}, operation=UPDATE`);
+
     // 楽観的UI更新：即座にローカル状態を更新
+    // updatedAtはデータベースから返される値を使用（リアルタイム同期で正確な値に更新される）
     setSchedules((prev) =>
       prev.map((s) =>
         s.id === scheduleId
           ? {
             ...s,
             ...updates,
-            updatedAt: new Date().toISOString(),
           }
           : s
       )
@@ -263,36 +283,35 @@ export function ResourceSchedulesClient({
 
       // UpdateScheduleInput形式に変換
       const updateInput: UpdateScheduleInput = {
-        eventDate: updatedSchedule.eventDate,
-        startTime: updatedSchedule.startTime,
-        endTime: updatedSchedule.endTime,
-        title: updatedSchedule.title,
-        destinationAddress: updatedSchedule.destinationAddress,
-        content: updatedSchedule.content,
+        loadingDatetime: updatedSchedule.loadingDatetime,
+        deliveryDatetime: updatedSchedule.deliveryDatetime,
+        loadingLocationId: updatedSchedule.loadingLocationId,
+        loadingLocationName: updatedSchedule.loadingLocationName,
+        loadingAddress: updatedSchedule.loadingAddress,
+        deliveryLocationId: updatedSchedule.deliveryLocationId,
+        deliveryLocationName: updatedSchedule.deliveryLocationName,
+        deliveryAddress: updatedSchedule.deliveryAddress,
+        cargo: updatedSchedule.cargo,
+        billingDate: updatedSchedule.billingDate,
+        fare: updatedSchedule.fare,
         clientId: updatedSchedule.clientId,
         driverId: updatedSchedule.driverId,
         vehicleId: updatedSchedule.vehicleId,
       };
-
-      // 自分の操作を記録（リアルタイム同期で重複通知を防ぐ）
-      recordMyOperation(scheduleId, "UPDATE");
 
       // サーバーに更新を送信
       await updateSchedule(scheduleId, updateInput);
 
       // 成功メッセージ
       const messages = [];
-      if (updates.eventDate) {
-        messages.push("日付を変更");
+      if (updates.loadingDatetime || updates.deliveryDatetime) {
+        messages.push("日時を変更");
       }
       if (updates.vehicleId !== undefined) {
         messages.push("車両を変更");
       }
       if (updates.driverId !== undefined) {
         messages.push("ドライバーを変更");
-      }
-      if (updates.startTime || updates.endTime) {
-        messages.push("時間を変更");
       }
 
       toast.success(`スケジュールを更新しました（${messages.join("、")}）`);
@@ -306,6 +325,20 @@ export function ResourceSchedulesClient({
 
       toast.error("スケジュールの更新に失敗しました。元に戻しました。");
       throw error;
+    }
+  };
+
+  // 手動同期ハンドラー
+  const [isSyncing, setIsSyncing] = useState(false);
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      // ページ全体をリフレッシュして最新データを取得
+      window.location.reload();
+    } catch (error) {
+      console.error('同期エラー:', error);
+      toast.error('同期に失敗しました');
+      setIsSyncing(false);
     }
   };
 
@@ -332,6 +365,17 @@ export function ResourceSchedulesClient({
                 filters={filters}
                 onFiltersChange={setFilters}
               />
+
+              {/* 同期ボタン */}
+              <Button
+                onClick={handleSync}
+                variant="outline"
+                className="flex-shrink-0"
+                disabled={isSyncing}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">同期</span>
+              </Button>
 
               {/* スケジュール追加ボタン */}
               <Button
