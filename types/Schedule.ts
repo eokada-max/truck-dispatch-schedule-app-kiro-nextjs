@@ -21,12 +21,6 @@ export interface Schedule {
   deliveryLocationName: string | null;
   deliveryAddress: string | null;
   
-  // 旧スキーマ（後方互換性のため残す）
-  loadingDate: string | null; // ISO 8601 date format (YYYY-MM-DD)
-  loadingTime: string | null; // HH:mm format
-  deliveryDate: string | null; // ISO 8601 date format (YYYY-MM-DD)
-  deliveryTime: string | null; // HH:mm format
-  
   // 配送詳細
   cargo: string | null;
   
@@ -34,13 +28,11 @@ export interface Schedule {
   billingDate: string | null; // ISO 8601 date format
   fare: number | null; // 運賃（円）
   
-  // 旧フィールド（後方互換性のため残す）
-  eventDate: string | null;
-  startTime: string | null;
-  endTime: string | null;
-  title: string | null;
-  destinationAddress: string | null;
-  content: string | null;
+  // 後方互換性フィールド（読み取り専用）
+  loadingDate: string | null; // ISO 8601 date format (YYYY-MM-DD)
+  loadingTime: string | null; // HH:mm format
+  deliveryDate: string | null; // ISO 8601 date format (YYYY-MM-DD)
+  deliveryTime: string | null; // HH:mm format
   
   // システム情報
   createdAt: string;
