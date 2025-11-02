@@ -29,17 +29,22 @@ export function ResourceScheduleCard({
   // ドラッグ可能にする
   const resourceId = viewType === "vehicle" ? schedule.vehicleId : schedule.driverId;
   
+  // loadingDatetimeから日付と時間を抽出
+  const eventDate = schedule.loadingDatetime.split('T')[0];
+  const startTime = schedule.loadingDatetime.split('T')[1].slice(0, 5); // HH:mm
+  const endTime = schedule.deliveryDatetime.split('T')[1].slice(0, 5); // HH:mm
+  
   const { attributes, listeners, setNodeRef, isDragging, transform } = useDraggable({
     id: `schedule-${schedule.id}`,
     data: {
       schedule,
       sourceResourceId: resourceId || "unassigned",
-      sourceDate: schedule.eventDate,
+      sourceDate: eventDate,
     },
   });
 
   // 時間軸上の位置とサイズを計算
-  const position = calculateSchedulePosition(schedule.startTime, schedule.endTime);
+  const position = calculateSchedulePosition(startTime, endTime);
   const cardWidth = parseFloat(position.width.replace('%', ''));
   const isNarrow = cardWidth < 15; // 15%未満の場合は狭いとみなす
 
@@ -73,7 +78,7 @@ export function ResourceScheduleCard({
           // 狭い場合は時間のみ表示
           <div className="flex items-center justify-center w-full">
             <span className="font-medium text-[10px]">
-              {schedule.startTime.slice(0, 5)}
+              {startTime}
             </span>
             {isConflicting && <span className="text-destructive text-[10px] ml-0.5">⚠</span>}
           </div>
@@ -84,14 +89,14 @@ export function ResourceScheduleCard({
             <div className="flex items-center gap-0.5 text-muted-foreground flex-shrink-0">
               <Clock className="w-2.5 h-2.5" />
               <span className="text-[10px] whitespace-nowrap">
-                {schedule.startTime.slice(0, 5)}
+                {startTime}
               </span>
             </div>
 
-            {/* タイトル */}
-            {cardWidth > 20 && (
+            {/* 荷物情報 */}
+            {cardWidth > 20 && schedule.cargo && (
               <div className="font-medium text-[10px] truncate flex-1">
-                {schedule.title}
+                {schedule.cargo}
               </div>
             )}
 

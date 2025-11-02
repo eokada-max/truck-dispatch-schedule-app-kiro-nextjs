@@ -193,3 +193,30 @@ export function isFuture(date: Date): boolean {
   const today = getToday();
   return date > today;
 }
+
+/**
+ * datetimeから日付部分を抽出（Tまたはスペースで分割）
+ * @param datetime ISO 8601形式またはPostgreSQL形式のdatetime文字列
+ * @returns YYYY-MM-DD形式の日付文字列
+ */
+export function extractDate(datetime: string): string {
+  if (!datetime) return '';
+  // 'T'または' 'で分割して日付部分を取得
+  const parts = datetime.split(/[T ]/);
+  return parts[0] || '';
+}
+
+/**
+ * datetimeから時間部分を抽出（Tまたはスペースで分割）
+ * @param datetime ISO 8601形式またはPostgreSQL形式のdatetime文字列
+ * @returns HH:mm:ss形式の時間文字列
+ */
+export function extractTime(datetime: string): string {
+  if (!datetime) return '00:00:00';
+  // 'T'または' 'で分割して時間部分を取得
+  const parts = datetime.split(/[T ]/);
+  if (parts.length < 2) return '00:00:00';
+  // タイムゾーン情報（+00など）を削除
+  const timePart = parts[1].split('+')[0].split('-')[0];
+  return timePart || '00:00:00';
+}

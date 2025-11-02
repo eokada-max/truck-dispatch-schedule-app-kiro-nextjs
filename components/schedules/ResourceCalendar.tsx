@@ -165,7 +165,14 @@ export function ResourceCalendar({
       
       // 日付変更
       if (hasDateChanged) {
-        updates.eventDate = cellData.date;
+        // loadingDatetimeとdeliveryDatetimeの日付部分を更新
+        const oldLoadingDate = scheduleData.schedule.loadingDatetime.split('T')[0];
+        const oldDeliveryDate = scheduleData.schedule.deliveryDatetime.split('T')[0];
+        const loadingTime = scheduleData.schedule.loadingDatetime.split('T')[1];
+        const deliveryTime = scheduleData.schedule.deliveryDatetime.split('T')[1];
+        
+        updates.loadingDatetime = `${cellData.date}T${loadingTime}`;
+        updates.deliveryDatetime = `${cellData.date}T${deliveryTime}`;
       }
       
       // リソース変更
@@ -184,17 +191,22 @@ export function ResourceCalendar({
         // ドロップ位置から新しい開始時刻を計算
         const newStartTime = positionToTime(cellData.dropPosition!);
         
+        // 元のスケジュールの時間を抽出
+        const oldStartTime = scheduleData.schedule.loadingDatetime.split('T')[1].slice(0, 5);
+        const oldEndTime = scheduleData.schedule.deliveryDatetime.split('T')[1].slice(0, 5);
+        
         // 元のスケジュールの長さ（分）を計算
-        const duration = getTimeDifferenceInMinutes(
-          scheduleData.schedule.startTime,
-          scheduleData.schedule.endTime
-        );
+        const duration = getTimeDifferenceInMinutes(oldStartTime, oldEndTime);
         
         // 新しい終了時刻を計算
         const newEndTime = addMinutesToTime(newStartTime, duration);
         
-        updates.startTime = newStartTime;
-        updates.endTime = newEndTime;
+        // 日付部分を保持して時間のみ更新
+        const loadingDate = scheduleData.schedule.loadingDatetime.split('T')[0];
+        const deliveryDate = scheduleData.schedule.deliveryDatetime.split('T')[0];
+        
+        updates.loadingDatetime = `${loadingDate}T${newStartTime}:00`;
+        updates.deliveryDatetime = `${deliveryDate}T${newEndTime}:00`;
       }
       
       // 更新を実行

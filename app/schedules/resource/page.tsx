@@ -5,6 +5,7 @@ import { getAllDrivers } from "@/lib/api/drivers";
 import { getAllVehicles } from "@/lib/api/vehicles";
 import { getAllClients } from "@/lib/api/clients";
 import { getAllPartnerCompanies } from "@/lib/api/partnerCompanies";
+import { getAllLocations } from "@/lib/api/locations";
 
 export const metadata = {
   title: "リソースカレンダー | 配送スケジュール管理",
@@ -16,13 +17,14 @@ export const revalidate = 300;
 
 export default async function ResourceSchedulesPage() {
   // 並列でデータ取得
-  const [schedules, drivers, vehicles, clients, partnerCompanies] =
+  const [schedules, drivers, vehicles, clients, partnerCompanies, locations] =
     await Promise.all([
       getAllSchedules(),
       getAllDrivers(),
       getAllVehicles(),
       getAllClients(),
       getAllPartnerCompanies(),
+      getAllLocations(),
     ]);
 
   return (
@@ -33,6 +35,7 @@ export default async function ResourceSchedulesPage() {
         vehicles={vehicles}
         clients={clients}
         partnerCompanies={partnerCompanies}
+        locations={locations}
       />
     </Suspense>
   );

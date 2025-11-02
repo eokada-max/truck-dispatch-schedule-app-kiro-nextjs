@@ -70,8 +70,7 @@ export function SchedulesClient({
     
     // 取得済みスケジュールの日付範囲を計算
     const scheduleDates = schedules
-      .filter(s => s.loadingDate || s.eventDate)
-      .map(s => new Date(s.loadingDate || s.eventDate!));
+      .map(s => new Date(s.loadingDatetime.split('T')[0]));
     if (scheduleDates.length === 0) return;
     const minDate = new Date(Math.min(...scheduleDates.map(d => d.getTime())));
     const maxDate = new Date(Math.max(...scheduleDates.map(d => d.getTime())));
@@ -169,28 +168,17 @@ export function SchedulesClient({
           clientId: data.clientId || null,
           driverId: data.driverId || null,
           vehicleId: data.vehicleId || null,
-          loadingDate: data.loadingDate,
-          loadingTime: data.loadingTime,
+          loadingDatetime: `${data.loadingDatetime}:00`, // 秒を追加
           loadingLocationId: data.loadingLocationId || null,
           loadingLocationName: data.loadingLocationName || null,
           loadingAddress: data.loadingAddress || null,
-          deliveryDate: data.deliveryDate,
-          deliveryTime: data.deliveryTime,
+          deliveryDatetime: `${data.deliveryDatetime}:00`, // 秒を追加
           deliveryLocationId: data.deliveryLocationId || null,
           deliveryLocationName: data.deliveryLocationName || null,
           deliveryAddress: data.deliveryAddress || null,
           cargo: data.cargo || null,
           billingDate: data.billingDate || null,
           fare: data.fare ? Number(data.fare) : null,
-          // 旧フィールドも更新（後方互換性）
-          eventDate: data.loadingDate,
-          startTime: data.loadingTime,
-          endTime: data.deliveryTime,
-          title: data.loadingLocationName && data.deliveryLocationName 
-            ? `${data.loadingLocationName} → ${data.deliveryLocationName}`
-            : null,
-          destinationAddress: data.deliveryAddress || null,
-          content: data.cargo || null,
         };
         
         setSchedules(prev =>
@@ -228,14 +216,26 @@ export function SchedulesClient({
         
         if (error) {
           console.error('❌ 挿入エラー:', error);
-          throw error;
+          console.error('エラー詳細:', JSON.stringify(error, null, 2));
+          console.error('エラーメッセージ:', error.message);
+          console.error('エラーコード:', error.code);
+          console.error('エラーヒント:', error.hint);
+          console.error('エラー詳細情報:', error.details);
+          console.error('挿入しようとしたデータ:', JSON.stringify(insertData, null, 2));
+          throw new Error(`スケジュールの登録に失敗しました: ${error.message || error.hint || JSON.stringify(error)}`);
         }
         console.log('✅ 挿入成功:', insertedData);
         
         // 楽観的UI更新：即座にローカル状態を更新
         if (insertedData) {
           const newSchedule: Schedule = toSchedule(insertedData);
-          setSchedules(prev => [...prev, newSchedule]);
+          console.log('🟢 楽観的UI更新: 新しいスケジュールを追加', newSchedule);
+          setSchedules(prev => {
+            console.log('🟢 現在のスケジュール数:', prev.length);
+            const updated = [...prev, newSchedule];
+            console.log('🟢 更新後のスケジュール数:', updated.length);
+            return updated;
+          });
           
           // 自分の操作を記録（リアルタイム更新をスキップするため）
           recordMyOperation(insertedData.id, 'INSERT');
@@ -306,14 +306,11 @@ export function SchedulesClient({
       
       // キャメルケースをスネークケースに変換
       const dbUpdates: Record<string, any> = {};
-      if (updates.eventDate !== undefined) dbUpdates.event_date = updates.eventDate;
-      if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
-      if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
-      if (updates.title !== undefined) dbUpdates.title = updates.title;
-      if (updates.destinationAddress !== undefined) dbUpdates.destination_address = updates.destinationAddress;
-      if (updates.content !== undefined) dbUpdates.content = updates.content;
+      if (updates.loadingDatetime !== undefined) dbUpdates.loading_datetime = updates.loadingDatetime;
+      if (updates.deliveryDatetime !== undefined) dbUpdates.delivery_datetime = updates.deliveryDatetime;
       if (updates.clientId !== undefined) dbUpdates.client_id = updates.clientId;
       if (updates.driverId !== undefined) dbUpdates.driver_id = updates.driverId;
+      if (updates.vehicleId !== undefined) dbUpdates.vehicle_id = updates.vehicleId;
       
       const { error } = await (supabase
         .from("schedules_kiro_nextjs") as any)

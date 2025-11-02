@@ -149,9 +149,9 @@ export function TimelineCalendar({
         const schedule = optimisticSchedules.find(s => s.id === keyboardMoveMode.scheduleId);
         if (!schedule) return;
         
-        const currentDate = keyboardMoveMode.currentDate || schedule.eventDate;
-        const currentStartTime = keyboardMoveMode.currentStartTime || schedule.startTime;
-        const currentEndTime = keyboardMoveMode.currentEndTime || schedule.endTime;
+        const currentDate = keyboardMoveMode.currentDate || schedule.loadingDatetime.split('T')[0];
+        const currentStartTime = keyboardMoveMode.currentStartTime || schedule.loadingDatetime.split('T')[1];
+        const currentEndTime = keyboardMoveMode.currentEndTime || schedule.deliveryDatetime.split('T')[1];
         
         let newDate = currentDate;
         let newStartTime = currentStartTime;
@@ -214,7 +214,7 @@ export function TimelineCalendar({
           setOptimisticSchedules(prev =>
             prev.map(s =>
               s.id === keyboardMoveMode.scheduleId
-                ? { ...s, eventDate: newDate, startTime: newStartTime, endTime: newEndTime }
+                ? { ...s, loadingDatetime: `${newDate}T${newStartTime}`, deliveryDatetime: `${newDate}T${newEndTime}` }
                 : s
             )
           );
@@ -278,7 +278,7 @@ export function TimelineCalendar({
     dates.forEach((date) => {
       const dateStr = formatDate(date);
       const daySchedules = optimisticSchedules.filter(
-        (schedule) => schedule.eventDate === dateStr
+        (schedule) => schedule.loadingDatetime.split('T')[0] === dateStr
       );
       grouped.set(dateStr, daySchedules);
     });
@@ -288,8 +288,10 @@ export function TimelineCalendar({
 
   // スケジュールの位置とサイズを計算（useCallbackでメモ化）
   const calculateSchedulePosition = useCallback((schedule: Schedule) => {
-    const startMinutes = timeToMinutes(schedule.startTime);
-    const endMinutes = timeToMinutes(schedule.endTime);
+    const loadingTime = schedule.loadingDatetime.split('T')[1];
+    const deliveryTime = schedule.deliveryDatetime.split('T')[1];
+    const startMinutes = timeToMinutes(loadingTime);
+    const endMinutes = timeToMinutes(deliveryTime);
     const duration = endMinutes - startMinutes;
 
     // 0:00を基準点（0分）とする
@@ -370,7 +372,9 @@ export function TimelineCalendar({
     const pixelsPerMinute = 1;
     const minutesDelta = Math.round(delta.y / pixelsPerMinute / 15) * 15;
 
-    const originalStartMinutes = timeToMinutes(schedule.startTime);
+    const loadingTime = schedule.loadingDatetime.split('T')[1];
+    const deliveryTime = schedule.deliveryDatetime.split('T')[1];
+    const originalStartMinutes = timeToMinutes(loadingTime);
     const newStartMinutes = originalStartMinutes + minutesDelta;
     const clampedStartMinutes = Math.max(0, Math.min(23 * 60, newStartMinutes));
 
@@ -378,7 +382,7 @@ export function TimelineCalendar({
     const newStartMins = clampedStartMinutes % 60;
     const newStartTime = `${String(newStartHours).padStart(2, '0')}:${String(newStartMins).padStart(2, '0')}:00`;
 
-    const originalEndMinutes = timeToMinutes(schedule.endTime);
+    const originalEndMinutes = timeToMinutes(deliveryTime);
     const duration = originalEndMinutes - originalStartMinutes;
     const newEndMinutes = clampedStartMinutes + duration;
     const newEndHours = Math.floor(newEndMinutes / 60);
@@ -437,7 +441,9 @@ export function TimelineCalendar({
     const minutesDelta = Math.round(delta.y / pixelsPerMinute / 15) * 15; // 15分単位
 
     // 新しい開始時間を計算
-    const originalStartMinutes = timeToMinutes(schedule.startTime);
+    const loadingTime = schedule.loadingDatetime.split('T')[1];
+    const deliveryTime = schedule.deliveryDatetime.split('T')[1];
+    const originalStartMinutes = timeToMinutes(loadingTime);
     const newStartMinutes = originalStartMinutes + minutesDelta;
 
     // 時間範囲を制限（0:00-24:00）
@@ -448,7 +454,7 @@ export function TimelineCalendar({
     const newStartTime = `${String(newStartHours).padStart(2, '0')}:${String(newStartMins).padStart(2, '0')}:00`;
 
     // 元のスケジュールの時間長を保持
-    const originalEndMinutes = timeToMinutes(schedule.endTime);
+    const originalEndMinutes = timeToMinutes(deliveryTime);
     const duration = originalEndMinutes - originalStartMinutes;
     const newEndMinutes = clampedStartMinutes + duration;
     const newEndHours = Math.floor(newEndMinutes / 60);
@@ -456,7 +462,8 @@ export function TimelineCalendar({
     const newEndTime = `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}:00`;
 
     // 変更がない場合は何もしない
-    if (newDate === schedule.eventDate && newStartTime === schedule.startTime) {
+    const currentDate = schedule.loadingDatetime.split('T')[0];
+    if (newDate === currentDate && newStartTime === loadingTime) {
       setIsProcessing(false);
       return;
     }
@@ -487,9 +494,8 @@ export function TimelineCalendar({
       setPendingUpdate({
         scheduleId: schedule.id,
         updates: {
-          eventDate: newDate,
-          startTime: newStartTime,
-          endTime: newEndTime,
+          loadingDatetime: `${newDate}T${newStartTime}`,
+          deliveryDatetime: `${newDate}T${newEndTime}`,
         },
       });
       setShowConflictDialog(true);
@@ -503,14 +509,12 @@ export function TimelineCalendar({
       'move',
       schedule.id,
       {
-        eventDate: schedule.eventDate,
-        startTime: schedule.startTime,
-        endTime: schedule.endTime,
+        loadingDatetime: schedule.loadingDatetime,
+        deliveryDatetime: schedule.deliveryDatetime,
       },
       {
-        eventDate: newDate,
-        startTime: newStartTime,
-        endTime: newEndTime,
+        loadingDatetime: `${newDate}T${newStartTime}`,
+        deliveryDatetime: `${newDate}T${newEndTime}`,
       }
     );
 
@@ -518,7 +522,7 @@ export function TimelineCalendar({
     setOptimisticSchedules(prev =>
       prev.map(s =>
         s.id === schedule.id
-          ? { ...s, eventDate: newDate, startTime: newStartTime, endTime: newEndTime }
+          ? { ...s, loadingDatetime: `${newDate}T${newStartTime}`, deliveryDatetime: `${newDate}T${newEndTime}` }
           : s
       )
     );
@@ -527,9 +531,8 @@ export function TimelineCalendar({
     if (onScheduleUpdate) {
       try {
         await onScheduleUpdate(schedule.id, {
-          eventDate: newDate,
-          startTime: newStartTime,
-          endTime: newEndTime,
+          loadingDatetime: `${newDate}T${newStartTime}`,
+          deliveryDatetime: `${newDate}T${newEndTime}`,
         } as Partial<Schedule>);
 
         // 成功メッセージに「元に戻す」ボタンを表示（5秒間表示）
@@ -596,9 +599,8 @@ export function TimelineCalendar({
       'move',
       pendingUpdate.scheduleId,
       {
-        eventDate: originalSchedule.eventDate,
-        startTime: originalSchedule.startTime,
-        endTime: originalSchedule.endTime,
+        loadingDatetime: originalSchedule.loadingDatetime,
+        deliveryDatetime: originalSchedule.deliveryDatetime,
       },
       pendingUpdate.updates
     );
@@ -673,15 +675,18 @@ export function TimelineCalendar({
 
   // キーボード移動を開始
   const handleKeyboardMoveStart = useCallback((schedule: Schedule) => {
+    const originalDate = schedule.loadingDatetime.split('T')[0];
+    const originalStartTime = schedule.loadingDatetime.split('T')[1];
+    const originalEndTime = schedule.deliveryDatetime.split('T')[1];
     setKeyboardMoveMode({
       isActive: true,
       scheduleId: schedule.id,
-      originalDate: schedule.eventDate,
-      originalStartTime: schedule.startTime,
-      originalEndTime: schedule.endTime,
-      currentDate: schedule.eventDate,
-      currentStartTime: schedule.startTime,
-      currentEndTime: schedule.endTime,
+      originalDate,
+      originalStartTime,
+      originalEndTime,
+      currentDate: originalDate,
+      currentStartTime: originalStartTime,
+      currentEndTime: originalEndTime,
     });
     toast.info('矢印キーで移動、Enterで確定、Escapeでキャンセル', {
       id: 'keyboard-move-start',
@@ -698,12 +703,14 @@ export function TimelineCalendar({
     const schedule = schedules.find(s => s.id === keyboardMoveMode.scheduleId);
     if (!schedule) return;
 
-    const newDate = keyboardMoveMode.currentDate || schedule.eventDate;
-    const newStartTime = keyboardMoveMode.currentStartTime || schedule.startTime;
-    const newEndTime = keyboardMoveMode.currentEndTime || schedule.endTime;
+    const currentDate = schedule.loadingDatetime.split('T')[0];
+    const currentStartTime = schedule.loadingDatetime.split('T')[1];
+    const newDate = keyboardMoveMode.currentDate || currentDate;
+    const newStartTime = keyboardMoveMode.currentStartTime || currentStartTime;
+    const newEndTime = keyboardMoveMode.currentEndTime || schedule.deliveryDatetime.split('T')[1];
 
     // 変更がない場合
-    if (newDate === schedule.eventDate && newStartTime === schedule.startTime) {
+    if (newDate === currentDate && newStartTime === currentStartTime) {
       setKeyboardMoveMode({
         isActive: false,
         scheduleId: null,
@@ -744,22 +751,19 @@ export function TimelineCalendar({
       'move',
       schedule.id,
       {
-        eventDate: schedule.eventDate,
-        startTime: schedule.startTime,
-        endTime: schedule.endTime,
+        loadingDatetime: schedule.loadingDatetime,
+        deliveryDatetime: schedule.deliveryDatetime,
       },
       {
-        eventDate: newDate,
-        startTime: newStartTime,
-        endTime: newEndTime,
+        loadingDatetime: `${newDate}T${newStartTime}`,
+        deliveryDatetime: `${newDate}T${newEndTime}`,
       }
     );
 
     try {
       await onScheduleUpdate(schedule.id, {
-        eventDate: newDate,
-        startTime: newStartTime,
-        endTime: newEndTime,
+        loadingDatetime: `${newDate}T${newStartTime}`,
+        deliveryDatetime: `${newDate}T${newEndTime}`,
       } as Partial<Schedule>);
 
       toast.success('スケジュールを移動しました', {

@@ -133,16 +133,23 @@ export function ResourceCell({
             ? vehiclesMap?.get(schedule.vehicleId)?.name
             : undefined;
 
+          // loadingDatetimeから時間を抽出
+          const scheduleStartTime = schedule.loadingDatetime.split('T')[1].slice(0, 5);
+          const scheduleEndTime = schedule.deliveryDatetime.split('T')[1].slice(0, 5);
+          
           // 競合チェック：同じセル内の他のスケジュールと時間が重複しているか
           const isConflicting = schedules.some(
-            (otherSchedule) =>
-              otherSchedule.id !== schedule.id &&
-              timeRangesOverlap(
-                schedule.startTime,
-                schedule.endTime,
-                otherSchedule.startTime,
-                otherSchedule.endTime
-              )
+            (otherSchedule) => {
+              if (otherSchedule.id === schedule.id) return false;
+              const otherStartTime = otherSchedule.loadingDatetime.split('T')[1].slice(0, 5);
+              const otherEndTime = otherSchedule.deliveryDatetime.split('T')[1].slice(0, 5);
+              return timeRangesOverlap(
+                scheduleStartTime,
+                scheduleEndTime,
+                otherStartTime,
+                otherEndTime
+              );
+            }
           );
 
           return (

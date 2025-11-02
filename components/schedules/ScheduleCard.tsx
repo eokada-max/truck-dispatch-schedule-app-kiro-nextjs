@@ -40,16 +40,15 @@ export const ScheduleCard = memo(function ScheduleCard({
     ? "absolute bg-primary/30 border-2 border-primary rounded p-1.5 transition-colors overflow-hidden touch-manipulation"
     : "absolute bg-primary/10 border border-primary/30 rounded p-1.5 hover:bg-primary/20 active:bg-primary/30 transition-colors overflow-hidden touch-manipulation";
   
-  // 積地名 → 着地名の表示（新スキーマ優先、旧スキーマにフォールバック）
+  // 積地名 → 着地名の表示
   const routeDisplay = schedule.loadingLocationName && schedule.deliveryLocationName
     ? `${schedule.loadingLocationName} → ${schedule.deliveryLocationName}`
-    : schedule.title || '配送';
+    : '配送';
   
-  // 時間表示（新スキーマ優先、旧スキーマにフォールバック）
-  const timeDisplay = formatTimeRange(
-    schedule.loadingTime || schedule.startTime || '',
-    schedule.deliveryTime || schedule.endTime || ''
-  );
+  // 時間表示（datetimeから時間を抽出）
+  const loadingTime = schedule.loadingDatetime ? schedule.loadingDatetime.split('T')[1]?.slice(0, 5) : '';
+  const deliveryTime = schedule.deliveryDatetime ? schedule.deliveryDatetime.split('T')[1]?.slice(0, 5) : '';
+  const timeDisplay = formatTimeRange(loadingTime, deliveryTime);
   
   return (
     <div

@@ -157,18 +157,20 @@ function ConflictItem({
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1">
           <div className="font-semibold text-sm">
-            {conflict.schedule.title}
+            {conflict.schedule.loadingLocationName && conflict.schedule.deliveryLocationName
+              ? `${conflict.schedule.loadingLocationName} → ${conflict.schedule.deliveryLocationName}`
+              : '配送'}
           </div>
-          {conflict.schedule.destinationAddress && (
+          {conflict.schedule.deliveryAddress && (
             <div className="text-xs text-muted-foreground mt-1">
-              届け先: {conflict.schedule.destinationAddress}
+              届け先: {conflict.schedule.deliveryAddress}
             </div>
           )}
         </div>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Clock className="w-3 h-3" />
           <span>
-            {conflict.schedule.startTime.slice(0, 5)} - {conflict.schedule.endTime.slice(0, 5)}
+            {conflict.schedule.loadingDatetime.split('T')[1].slice(0, 5)} - {conflict.schedule.deliveryDatetime.split('T')[1].slice(0, 5)}
           </span>
         </div>
       </div>

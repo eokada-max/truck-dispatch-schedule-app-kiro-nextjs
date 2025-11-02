@@ -65,20 +65,23 @@ export function checkResourceConflict(
     }
 
     // 異なる日付はスキップ
-    if (otherSchedule.eventDate !== newDate) {
+    const otherDate = otherSchedule.loadingDatetime.split('T')[0];
+    if (otherDate !== newDate) {
       continue;
     }
 
     // 時間範囲の重複をチェック
+    const otherLoadingTime = otherSchedule.loadingDatetime.split('T')[1];
+    const otherDeliveryTime = otherSchedule.deliveryDatetime.split('T')[1];
     if (timeRangesOverlap(
-      otherSchedule.startTime,
-      otherSchedule.endTime,
+      otherLoadingTime,
+      otherDeliveryTime,
       newStartTime,
       newEndTime
     )) {
       const overlap = calculateOverlap(
-        otherSchedule.startTime,
-        otherSchedule.endTime,
+        otherLoadingTime,
+        otherDeliveryTime,
         newStartTime,
         newEndTime
       );
@@ -146,12 +149,17 @@ export function findNextAvailableResourceSlot(
   const resourceSchedules = allSchedules
     .filter(s => {
       if (s.id === schedule.id) return false;
-      if (s.eventDate !== date) return false;
+      const sDate = s.loadingDatetime.split('T')[0];
+      if (sDate !== date) return false;
       
       const sResourceId = resourceType === "driver" ? s.driverId : s.vehicleId;
       return sResourceId === resourceId;
     })
-    .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+    .sort((a, b) => {
+      const aLoadingTime = a.loadingDatetime.split('T')[1];
+      const bLoadingTime = b.loadingDatetime.split('T')[1];
+      return timeToMinutes(aLoadingTime) - timeToMinutes(bLoadingTime);
+    });
 
   // 15分刻みで時間枠を検索
   for (let minutes = startHour * 60; minutes < endHour * 60; minutes += 15) {
@@ -174,9 +182,11 @@ export function findNextAvailableResourceSlot(
     // この時間枠が他のスケジュールと重複しないかチェック
     let hasOverlap = false;
     for (const otherSchedule of resourceSchedules) {
+      const otherLoadingTime = otherSchedule.loadingDatetime.split('T')[1];
+      const otherDeliveryTime = otherSchedule.deliveryDatetime.split('T')[1];
       if (timeRangesOverlap(
-        otherSchedule.startTime,
-        otherSchedule.endTime,
+        otherLoadingTime,
+        otherDeliveryTime,
         candidateStartTime,
         candidateEndTime
       )) {

@@ -28,12 +28,6 @@ export interface Schedule {
   billingDate: string | null; // ISO 8601 date format
   fare: number | null; // 運賃（円）
   
-  // 後方互換性フィールド（読み取り専用）
-  loadingDate: string | null; // ISO 8601 date format (YYYY-MM-DD)
-  loadingTime: string | null; // HH:mm format
-  deliveryDate: string | null; // ISO 8601 date format (YYYY-MM-DD)
-  deliveryTime: string | null; // HH:mm format
-  
   // システム情報
   createdAt: string;
   updatedAt: string;

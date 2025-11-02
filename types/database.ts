@@ -146,11 +146,6 @@ export interface Database {
           // 請求情報
           billing_date: string | null;
           fare: number | null;
-          // 後方互換性フィールド
-          loading_date: string | null;
-          loading_time: string | null;
-          delivery_date: string | null;
-          delivery_time: string | null;
           // システム情報
           created_at: string;
           updated_at: string;
@@ -161,13 +156,13 @@ export interface Database {
           client_id?: string | null;
           driver_id?: string | null;
           vehicle_id?: string | null;
-          // 積み地情報（新スキーマ）
-          loading_datetime: string | null;
+          // 積み地情報（新スキーマ）- 必須
+          loading_datetime: string;
           loading_location_id?: string | null;
           loading_location_name?: string | null;
           loading_address?: string | null;
-          // 着地情報（新スキーマ）
-          delivery_datetime: string | null;
+          // 着地情報（新スキーマ）- 必須
+          delivery_datetime: string;
           delivery_location_id?: string | null;
           delivery_location_name?: string | null;
           delivery_address?: string | null;
@@ -176,11 +171,6 @@ export interface Database {
           // 請求情報
           billing_date?: string | null;
           fare?: number | null;
-          // 後方互換性フィールド
-          loading_date?: string | null;
-          loading_time?: string | null;
-          delivery_date?: string | null;
-          delivery_time?: string | null;
           // システム情報
           created_at?: string;
           updated_at?: string;
@@ -206,11 +196,6 @@ export interface Database {
           // 請求情報
           billing_date?: string | null;
           fare?: number | null;
-          // 後方互換性フィールド
-          loading_date?: string | null;
-          loading_time?: string | null;
-          delivery_date?: string | null;
-          delivery_time?: string | null;
           // システム情報
           created_at?: string;
           updated_at?: string;

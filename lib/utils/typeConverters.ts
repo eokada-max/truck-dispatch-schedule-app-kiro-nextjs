@@ -18,21 +18,26 @@ type PartnerCompanyRow = Database["public"]["Tables"]["partner_companies_kiro_ne
  * データベースのSchedule行をアプリケーションのSchedule型に変換
  */
 export function toSchedule(row: ScheduleRow): Schedule {
-  return {
+  // PostgreSQLのdatetime形式（スペース区切り）をISO 8601形式（T区切り）に正規化
+  const normalizeDateTime = (dt: string): string => {
+    if (!dt) return dt;
+    // タイムゾーン情報を削除し、スペースをTに置換
+    return dt.replace(' ', 'T').split('+')[0].split('Z')[0];
+  };
+
+  const schedule = {
     id: row.id,
     // 基本情報
     clientId: row.client_id,
     driverId: row.driver_id,
     vehicleId: row.vehicle_id,
-    // 積み地情報（新スキーマ）
-    loadingDatetime: row.loading_datetime || 
-      (row.loading_date && row.loading_time ? `${row.loading_date}T${row.loading_time}:00` : ''),
+    // 積み地情報
+    loadingDatetime: normalizeDateTime(row.loading_datetime),
     loadingLocationId: row.loading_location_id,
     loadingLocationName: row.loading_location_name,
     loadingAddress: row.loading_address,
-    // 着地情報（新スキーマ）
-    deliveryDatetime: row.delivery_datetime ||
-      (row.delivery_date && row.delivery_time ? `${row.delivery_date}T${row.delivery_time}:00` : ''),
+    // 着地情報
+    deliveryDatetime: normalizeDateTime(row.delivery_datetime),
     deliveryLocationId: row.delivery_location_id,
     deliveryLocationName: row.delivery_location_name,
     deliveryAddress: row.delivery_address,
@@ -41,15 +46,20 @@ export function toSchedule(row: ScheduleRow): Schedule {
     // 請求情報
     billingDate: row.billing_date,
     fare: row.fare,
-    // 後方互換性フィールド（読み取り専用）
-    loadingDate: row.loading_date,
-    loadingTime: row.loading_time,
-    deliveryDate: row.delivery_date,
-    deliveryTime: row.delivery_time,
     // システム情報
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+
+  // デバッグ用ログ
+  console.log('🔍 toSchedule変換:', {
+    id: schedule.id,
+    loadingDatetime: schedule.loadingDatetime,
+    deliveryDatetime: schedule.deliveryDatetime,
+    cargo: schedule.cargo,
+  });
+
+  return schedule;
 }
 
 /**
@@ -58,18 +68,46 @@ export function toSchedule(row: ScheduleRow): Schedule {
 export function toScheduleInsert(
   input: CreateScheduleInput | any
 ): Database["public"]["Tables"]["schedules_kiro_nextjs"]["Insert"] {
-  // datetime-local形式からISO文字列に変換
-  const loadingDatetime = input.loadingDatetime ? new Date(input.loadingDatetime).toISOString() : null;
-  const deliveryDatetime = input.deliveryDatetime ? new Date(input.deliveryDatetime).toISOString() : null;
+  // datetime-local形式（YYYY-MM-DDTHH:mm）からPostgreSQL TIMESTAMP形式に変換
+  // タイムゾーン変換を避けるため、単純に秒を追加するだけ
+  let loadingDatetime: string;
+  let deliveryDatetime: string;
   
-  // 日付と時間を分離（後方互換性のため）
-  const loadingDate = loadingDatetime ? loadingDatetime.split('T')[0] : null;
-  const loadingTime = loadingDatetime ? loadingDatetime.split('T')[1].slice(0, 5) : null;
-  const deliveryDate = deliveryDatetime ? deliveryDatetime.split('T')[0] : null;
-  const deliveryTime = deliveryDatetime ? deliveryDatetime.split('T')[1].slice(0, 5) : null;
+  if (input.loadingDatetime && input.deliveryDatetime) {
+    // 新形式：datetime-local (YYYY-MM-DDTHH:mm) → YYYY-MM-DDTHH:mm:ss
+    // 既に秒が含まれている場合は追加しない
+    loadingDatetime = input.loadingDatetime.includes(':00:00') 
+      ? input.loadingDatetime.replace(':00:00', ':00')  // 重複を修正
+      : input.loadingDatetime.length === 16 
+        ? `${input.loadingDatetime}:00`  // YYYY-MM-DDTHH:mm形式
+        : input.loadingDatetime;  // 既に秒が含まれている
+    
+    deliveryDatetime = input.deliveryDatetime.includes(':00:00')
+      ? input.deliveryDatetime.replace(':00:00', ':00')  // 重複を修正
+      : input.deliveryDatetime.length === 16
+        ? `${input.deliveryDatetime}:00`  // YYYY-MM-DDTHH:mm形式
+        : input.deliveryDatetime;  // 既に秒が含まれている
+  } else if (input.loadingDate && input.loadingTime && input.deliveryDate && input.deliveryTime) {
+    // 旧形式：date + time（後方互換性のため）
+    loadingDatetime = `${input.loadingDate}T${input.loadingTime}:00`;
+    deliveryDatetime = `${input.deliveryDate}T${input.deliveryTime}:00`;
+  } else {
+    throw new Error('積日時と着日時は必須です');
+  }
+  
+  console.log('📝 toScheduleInsert:', {
+    input: {
+      loadingDatetime: input.loadingDatetime,
+      deliveryDatetime: input.deliveryDatetime,
+    },
+    output: {
+      loading_datetime: loadingDatetime,
+      delivery_datetime: deliveryDatetime,
+    }
+  });
   
   return {
-    // 新しいフィールド（TIMESTAMP型）
+    // TIMESTAMP型フィールド - 必須
     loading_datetime: loadingDatetime,
     delivery_datetime: deliveryDatetime,
     loading_location_id: input.loadingLocationId || null,
@@ -85,11 +123,6 @@ export function toScheduleInsert(
     client_id: input.clientId || null,
     driver_id: input.driverId || null,
     vehicle_id: input.vehicleId || null,
-    // 後方互換性フィールド（自動計算）
-    loading_date: loadingDate,
-    loading_time: loadingTime,
-    delivery_date: deliveryDate,
-    delivery_time: deliveryTime,
   };
 }
 
@@ -99,18 +132,27 @@ export function toScheduleInsert(
 export function toScheduleUpdate(
   input: UpdateScheduleInput | any
 ): Database["public"]["Tables"]["schedules_kiro_nextjs"]["Update"] {
-  // datetime-local形式からISO文字列に変換
-  const loadingDatetime = input.loadingDatetime ? new Date(input.loadingDatetime).toISOString() : undefined;
-  const deliveryDatetime = input.deliveryDatetime ? new Date(input.deliveryDatetime).toISOString() : undefined;
+  // datetime-local形式（YYYY-MM-DDTHH:mm）からPostgreSQL TIMESTAMP形式に変換
+  // タイムゾーン変換を避けるため、単純に秒を追加するだけ
+  // 既に秒が含まれている場合は追加しない
+  const loadingDatetime = input.loadingDatetime 
+    ? (input.loadingDatetime.includes(':00:00')
+        ? input.loadingDatetime.replace(':00:00', ':00')  // 重複を修正
+        : input.loadingDatetime.length === 16
+          ? `${input.loadingDatetime}:00`  // YYYY-MM-DDTHH:mm形式
+          : input.loadingDatetime)  // 既に秒が含まれている
+    : undefined;
   
-  // 日付と時間を分離（後方互換性のため）
-  const loadingDate = loadingDatetime ? loadingDatetime.split('T')[0] : undefined;
-  const loadingTime = loadingDatetime ? loadingDatetime.split('T')[1].slice(0, 5) : undefined;
-  const deliveryDate = deliveryDatetime ? deliveryDatetime.split('T')[0] : undefined;
-  const deliveryTime = deliveryDatetime ? deliveryDatetime.split('T')[1].slice(0, 5) : undefined;
+  const deliveryDatetime = input.deliveryDatetime
+    ? (input.deliveryDatetime.includes(':00:00')
+        ? input.deliveryDatetime.replace(':00:00', ':00')  // 重複を修正
+        : input.deliveryDatetime.length === 16
+          ? `${input.deliveryDatetime}:00`  // YYYY-MM-DDTHH:mm形式
+          : input.deliveryDatetime)  // 既に秒が含まれている
+    : undefined;
   
   return {
-    // 新しいフィールド（TIMESTAMP型）
+    // TIMESTAMP型フィールド
     loading_datetime: loadingDatetime,
     delivery_datetime: deliveryDatetime,
     loading_location_id: input.loadingLocationId !== undefined ? input.loadingLocationId || null : undefined,
@@ -126,11 +168,6 @@ export function toScheduleUpdate(
     client_id: input.clientId !== undefined ? input.clientId || null : undefined,
     driver_id: input.driverId !== undefined ? input.driverId || null : undefined,
     vehicle_id: input.vehicleId !== undefined ? input.vehicleId || null : undefined,
-    // 後方互換性フィールド（自動計算）
-    loading_date: loadingDate,
-    loading_time: loadingTime,
-    delivery_date: deliveryDate,
-    delivery_time: deliveryTime,
   };
 }
 

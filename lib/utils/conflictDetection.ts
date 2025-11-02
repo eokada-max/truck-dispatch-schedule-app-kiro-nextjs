@@ -142,14 +142,17 @@ export function checkConflict(
     }
 
     // 異なる日付はスキップ
-    if (otherSchedule.eventDate !== newDate) {
+    const otherDate = otherSchedule.loadingDatetime.split('T')[0];
+    if (otherDate !== newDate) {
       continue;
     }
 
     // 時間範囲の重複をチェック
+    const otherLoadingTime = otherSchedule.loadingDatetime.split('T')[1];
+    const otherDeliveryTime = otherSchedule.deliveryDatetime.split('T')[1];
     const hasTimeOverlap = timeRangesOverlap(
-      otherSchedule.startTime,
-      otherSchedule.endTime,
+      otherLoadingTime,
+      otherDeliveryTime,
       newStartTime,
       newEndTime
     );
@@ -159,8 +162,8 @@ export function checkConflict(
     }
 
     const overlap = calculateOverlap(
-      otherSchedule.startTime,
-      otherSchedule.endTime,
+      otherLoadingTime,
+      otherDeliveryTime,
       newStartTime,
       newEndTime
     );
@@ -251,12 +254,17 @@ export function findNextAvailableSlot(
 
   // 同じドライバー、同じ日付のスケジュールを取得してソート
   const driverSchedules = allSchedules
-    .filter(s =>
-      s.id !== schedule.id &&
-      s.driverId === schedule.driverId &&
-      s.eventDate === date
-    )
-    .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+    .filter(s => {
+      const sDate = s.loadingDatetime.split('T')[0];
+      return s.id !== schedule.id &&
+        s.driverId === schedule.driverId &&
+        sDate === date;
+    })
+    .sort((a, b) => {
+      const aLoadingTime = a.loadingDatetime.split('T')[1];
+      const bLoadingTime = b.loadingDatetime.split('T')[1];
+      return timeToMinutes(aLoadingTime) - timeToMinutes(bLoadingTime);
+    });
 
   // 15分刻みで時間枠を検索
   for (let minutes = startHour * 60; minutes < endHour * 60; minutes += 15) {
@@ -279,9 +287,11 @@ export function findNextAvailableSlot(
     // この時間枠が他のスケジュールと重複しないかチェック
     let hasOverlap = false;
     for (const otherSchedule of driverSchedules) {
+      const otherLoadingTime = otherSchedule.loadingDatetime.split('T')[1];
+      const otherDeliveryTime = otherSchedule.deliveryDatetime.split('T')[1];
       if (timeRangesOverlap(
-        otherSchedule.startTime,
-        otherSchedule.endTime,
+        otherLoadingTime,
+        otherDeliveryTime,
         candidateStartTime,
         candidateEndTime
       )) {
@@ -329,8 +339,11 @@ export function formatConflictMessage(conflicts: ConflictDetail[]): string {
   const messages = conflicts.map(conflict => {
     const severity = getConflictSeverity(conflict);
     const severityLabel = severity === 3 ? '⚠️ 重大' : severity === 2 ? '⚠ 注意' : 'ℹ️ 軽微';
+    const scheduleTitle = conflict.schedule.loadingLocationName && conflict.schedule.deliveryLocationName
+      ? `${conflict.schedule.loadingLocationName} → ${conflict.schedule.deliveryLocationName}`
+      : '配送';
     
-    return `${severityLabel}: ${conflict.schedule.title} (${conflict.overlapStart.slice(0, 5)}-${conflict.overlapEnd.slice(0, 5)}, ${conflict.overlapMinutes}分重複)`;
+    return `${severityLabel}: ${scheduleTitle} (${conflict.overlapStart.slice(0, 5)}-${conflict.overlapEnd.slice(0, 5)}, ${conflict.overlapMinutes}分重複)`;
   });
 
   return messages.join('\n');

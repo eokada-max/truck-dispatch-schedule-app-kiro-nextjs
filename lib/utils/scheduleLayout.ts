@@ -21,10 +21,15 @@ export interface ScheduleLayout {
  * 2つのスケジュールが時間的に重なっているかチェック
  */
 function schedulesOverlap(a: Schedule, b: Schedule): boolean {
-  const aStart = timeToMinutes(a.startTime);
-  const aEnd = timeToMinutes(a.endTime);
-  const bStart = timeToMinutes(b.startTime);
-  const bEnd = timeToMinutes(b.endTime);
+  const aLoadingTime = a.loadingDatetime.split('T')[1];
+  const aDeliveryTime = a.deliveryDatetime.split('T')[1];
+  const bLoadingTime = b.loadingDatetime.split('T')[1];
+  const bDeliveryTime = b.deliveryDatetime.split('T')[1];
+  
+  const aStart = timeToMinutes(aLoadingTime);
+  const aEnd = timeToMinutes(aDeliveryTime);
+  const bStart = timeToMinutes(bLoadingTime);
+  const bEnd = timeToMinutes(bDeliveryTime);
 
   return aStart < bEnd && bStart < aEnd;
 }
@@ -36,9 +41,11 @@ function createOverlapGroups(schedules: Schedule[]): Schedule[][] {
   if (schedules.length === 0) return [];
 
   // 開始時刻でソート
-  const sorted = [...schedules].sort((a, b) => 
-    timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-  );
+  const sorted = [...schedules].sort((a, b) => {
+    const aLoadingTime = a.loadingDatetime.split('T')[1];
+    const bLoadingTime = b.loadingDatetime.split('T')[1];
+    return timeToMinutes(aLoadingTime) - timeToMinutes(bLoadingTime);
+  });
 
   const groups: Schedule[][] = [];
   let currentGroup: Schedule[] = [sorted[0]];
@@ -68,16 +75,20 @@ function assignColumns(group: Schedule[]): Map<string, { column: number; totalCo
   const result = new Map<string, { column: number; totalColumns: number }>();
   
   // 開始時刻でソート
-  const sorted = [...group].sort((a, b) => 
-    timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-  );
+  const sorted = [...group].sort((a, b) => {
+    const aLoadingTime = a.loadingDatetime.split('T')[1];
+    const bLoadingTime = b.loadingDatetime.split('T')[1];
+    return timeToMinutes(aLoadingTime) - timeToMinutes(bLoadingTime);
+  });
 
   // 各カラムの最後の終了時刻を追跡
   const columnEndTimes: number[] = [];
 
   for (const schedule of sorted) {
-    const startMinutes = timeToMinutes(schedule.startTime);
-    const endMinutes = timeToMinutes(schedule.endTime);
+    const loadingTime = schedule.loadingDatetime.split('T')[1];
+    const deliveryTime = schedule.deliveryDatetime.split('T')[1];
+    const startMinutes = timeToMinutes(loadingTime);
+    const endMinutes = timeToMinutes(deliveryTime);
 
     // 利用可能なカラムを探す（終了時刻が現在の開始時刻より前のカラム）
     let column = columnEndTimes.findIndex(endTime => endTime <= startMinutes);

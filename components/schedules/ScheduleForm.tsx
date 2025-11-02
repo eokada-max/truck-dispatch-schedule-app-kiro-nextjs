@@ -71,17 +71,20 @@ export function ScheduleForm({
   const defaultValues = useMemo(() => {
     if (schedule) {
       // 編集モードの場合は既存の値を使用
+      // ISO 8601形式からdatetime-local形式に変換（秒を削除）
+      const loadingDatetime = schedule.loadingDatetime.slice(0, 16); // YYYY-MM-DDTHH:mm
+      const deliveryDatetime = schedule.deliveryDatetime.slice(0, 16); // YYYY-MM-DDTHH:mm
+      
+
       return {
         clientId: schedule.clientId || "",
         driverId: schedule.driverId || "",
         vehicleId: schedule.vehicleId || "",
-        loadingDate: schedule.loadingDate,
-        loadingTime: schedule.loadingTime,
+        loadingDatetime,
         loadingLocationId: schedule.loadingLocationId || "",
         loadingLocationName: schedule.loadingLocationName || "",
         loadingAddress: schedule.loadingAddress || "",
-        deliveryDate: schedule.deliveryDate,
-        deliveryTime: schedule.deliveryTime,
+        deliveryDatetime,
         deliveryLocationId: schedule.deliveryLocationId || "",
         deliveryLocationName: schedule.deliveryLocationName || "",
         deliveryAddress: schedule.deliveryAddress || "",
@@ -99,17 +102,19 @@ export function ScheduleForm({
     const endMinutes = startMinutes + 60;
     const defaultEndTime = initialEndTime || minutesToTime(endMinutes);
 
+    // datetime-local形式に結合（YYYY-MM-DDTHH:mm）
+    const loadingDatetime = `${today}T${roundedStartTime}`;
+    const deliveryDatetime = `${today}T${defaultEndTime}`;
+
     return {
       clientId: "",
       driverId: initialDriverId || "",
       vehicleId: initialVehicleId || "",
-      loadingDate: today,
-      loadingTime: roundedStartTime,
+      loadingDatetime,
       loadingLocationId: "",
       loadingLocationName: "",
       loadingAddress: "",
-      deliveryDate: today,
-      deliveryTime: defaultEndTime,
+      deliveryDatetime,
       deliveryLocationId: "",
       deliveryLocationName: "",
       deliveryAddress: "",
@@ -131,6 +136,17 @@ export function ScheduleForm({
 
   // 場所選択時のハンドラー（積み地）
   const handleLoadingLocationChange = (locationId: string) => {
+    if (locationId === "none") {
+      // 未選択の場合はクリア
+      setFormData({
+        ...formData,
+        loadingLocationId: "",
+        loadingLocationName: "",
+        loadingAddress: "",
+      });
+      return;
+    }
+    
     const location = locations.find((loc) => loc.id === locationId);
     if (location) {
       setFormData({
@@ -139,16 +155,22 @@ export function ScheduleForm({
         loadingLocationName: location.name,
         loadingAddress: location.address,
       });
-    } else {
-      setFormData({
-        ...formData,
-        loadingLocationId: "",
-      });
     }
   };
 
   // 場所選択時のハンドラー（着地）
   const handleDeliveryLocationChange = (locationId: string) => {
+    if (locationId === "none") {
+      // 未選択の場合はクリア
+      setFormData({
+        ...formData,
+        deliveryLocationId: "",
+        deliveryLocationName: "",
+        deliveryAddress: "",
+      });
+      return;
+    }
+    
     const location = locations.find((loc) => loc.id === locationId);
     if (location) {
       setFormData({
@@ -156,11 +178,6 @@ export function ScheduleForm({
         deliveryLocationId: locationId,
         deliveryLocationName: location.name,
         deliveryAddress: location.address,
-      });
-    } else {
-      setFormData({
-        ...formData,
-        deliveryLocationId: "",
       });
     }
   };
@@ -170,29 +187,21 @@ export function ScheduleForm({
     const newErrors: Record<string, string> = {};
 
     // 必須フィールドのチェック
-    if (!formData.loadingDate) {
-      newErrors.loadingDate = "積日を入力してください";
+    if (!formData.loadingDatetime) {
+      newErrors.loadingDatetime = "積日時を入力してください";
     }
 
-    if (!formData.loadingTime) {
-      newErrors.loadingTime = "積時間を入力してください";
+    if (!formData.deliveryDatetime) {
+      newErrors.deliveryDatetime = "着日時を入力してください";
     }
 
-    if (!formData.deliveryDate) {
-      newErrors.deliveryDate = "着日を入力してください";
-    }
-
-    if (!formData.deliveryTime) {
-      newErrors.deliveryTime = "着時間を入力してください";
-    }
-
-    // 日付の論理チェック（着日 >= 積日）
-    if (formData.loadingDate && formData.deliveryDate) {
-      const loadingDate = new Date(formData.loadingDate);
-      const deliveryDate = new Date(formData.deliveryDate);
+    // 日時の論理チェック（着日時 >= 積日時）
+    if (formData.loadingDatetime && formData.deliveryDatetime) {
+      const loadingDate = new Date(formData.loadingDatetime);
+      const deliveryDate = new Date(formData.deliveryDatetime);
       
       if (deliveryDate < loadingDate) {
-        newErrors.deliveryDate = "着日は積日以降の日付を指定してください";
+        newErrors.deliveryDatetime = "着日時は積日時以降を指定してください";
       }
     }
 
@@ -369,44 +378,23 @@ export function ScheduleForm({
             </h3>
             
             {/* 積日時 */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="loadingDate" className="text-xs">
-                  積日 <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="loadingDate"
-                  type="date"
-                  value={formData.loadingDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, loadingDate: e.target.value })
-                  }
-                  required
-                  className="h-9"
-                />
-                {errors.loadingDate && (
-                  <p className="text-xs text-destructive">{errors.loadingDate}</p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="loadingTime" className="text-xs">
-                  積時間 <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="loadingTime"
-                  type="time"
-                  value={formData.loadingTime}
-                  onChange={(e) =>
-                    setFormData({ ...formData, loadingTime: e.target.value })
-                  }
-                  required
-                  className="h-9"
-                />
-                {errors.loadingTime && (
-                  <p className="text-xs text-destructive">{errors.loadingTime}</p>
-                )}
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="loadingDatetime" className="text-xs">
+                積日時 <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="loadingDatetime"
+                type="datetime-local"
+                value={formData.loadingDatetime}
+                onChange={(e) =>
+                  setFormData({ ...formData, loadingDatetime: e.target.value })
+                }
+                required
+                className="h-9"
+              />
+              {errors.loadingDatetime && (
+                <p className="text-xs text-destructive">{errors.loadingDatetime}</p>
+              )}
             </div>
 
             {/* 積地場所・名前・住所 */}
@@ -419,13 +407,14 @@ export function ScheduleForm({
                   </div>
                 ) : (
                   <Select
-                    value={formData.loadingLocationId}
+                    value={formData.loadingLocationId || "none"}
                     onValueChange={handleLoadingLocationChange}
                   >
                     <SelectTrigger id="loadingLocationId" className="h-9">
                       <SelectValue placeholder="選択" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">未選択</SelectItem>
                       {locations.map((location) => (
                         <SelectItem key={location.id} value={location.id}>
                           {location.name}
@@ -471,44 +460,23 @@ export function ScheduleForm({
             </h3>
             
             {/* 着日時 */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="deliveryDate" className="text-xs">
-                  着日 <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="deliveryDate"
-                  type="date"
-                  value={formData.deliveryDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, deliveryDate: e.target.value })
-                  }
-                  required
-                  className="h-9"
-                />
-                {errors.deliveryDate && (
-                  <p className="text-xs text-destructive">{errors.deliveryDate}</p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="deliveryTime" className="text-xs">
-                  着時間 <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="deliveryTime"
-                  type="time"
-                  value={formData.deliveryTime}
-                  onChange={(e) =>
-                    setFormData({ ...formData, deliveryTime: e.target.value })
-                  }
-                  required
-                  className="h-9"
-                />
-                {errors.deliveryTime && (
-                  <p className="text-xs text-destructive">{errors.deliveryTime}</p>
-                )}
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="deliveryDatetime" className="text-xs">
+                着日時 <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="deliveryDatetime"
+                type="datetime-local"
+                value={formData.deliveryDatetime}
+                onChange={(e) =>
+                  setFormData({ ...formData, deliveryDatetime: e.target.value })
+                }
+                required
+                className="h-9"
+              />
+              {errors.deliveryDatetime && (
+                <p className="text-xs text-destructive">{errors.deliveryDatetime}</p>
+              )}
             </div>
 
             {/* 着地場所・名前・住所 */}
@@ -521,13 +489,14 @@ export function ScheduleForm({
                   </div>
                 ) : (
                   <Select
-                    value={formData.deliveryLocationId}
+                    value={formData.deliveryLocationId || "none"}
                     onValueChange={handleDeliveryLocationChange}
                   >
                     <SelectTrigger id="deliveryLocationId" className="h-9">
                       <SelectValue placeholder="選択" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">未選択</SelectItem>
                       {locations.map((location) => (
                         <SelectItem key={location.id} value={location.id}>
                           {location.name}

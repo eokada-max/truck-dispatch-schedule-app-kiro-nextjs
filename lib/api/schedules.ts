@@ -35,17 +35,13 @@ export async function getSchedulesByDateRange(
             cargo,
             billing_date,
             fare,
-            loading_date,
-            loading_time,
-            delivery_date,
-            delivery_time,
             created_at,
             updated_at,
             clients_kiro_nextjs!client_id(id, name),
             drivers_kiro_nextjs!driver_id(id, name)
         `)
-        .gte("loading_date", startDate)
-        .lte("loading_date", endDate)
+        .gte("loading_datetime", `${startDate}T00:00:00`)
+        .lte("loading_datetime", `${endDate}T23:59:59`)
         .order("loading_datetime", { ascending: true });
 
     if (error) {
@@ -80,16 +76,13 @@ export async function getSchedulesByDate(date: string): Promise<Schedule[]> {
             cargo,
             billing_date,
             fare,
-            loading_date,
-            loading_time,
-            delivery_date,
-            delivery_time,
             created_at,
             updated_at,
             clients_kiro_nextjs!client_id(id, name),
             drivers_kiro_nextjs!driver_id(id, name)
         `)
-        .eq("loading_date", date)
+        .gte("loading_datetime", `${date}T00:00:00`)
+        .lt("loading_datetime", `${date}T23:59:59`)
         .order("loading_datetime", { ascending: true });
 
     if (error) {
@@ -128,10 +121,6 @@ export async function getSchedulesByDriver(
             cargo,
             billing_date,
             fare,
-            loading_date,
-            loading_time,
-            delivery_date,
-            delivery_time,
             created_at,
             updated_at,
             clients_kiro_nextjs!client_id(id, name)
@@ -139,11 +128,11 @@ export async function getSchedulesByDriver(
         .eq("driver_id", driverId);
 
     if (startDate) {
-        query = query.gte("loading_date", startDate);
+        query = query.gte("loading_datetime", `${startDate}T00:00:00`);
     }
 
     if (endDate) {
-        query = query.lte("loading_date", endDate);
+        query = query.lte("loading_datetime", `${endDate}T23:59:59`);
     }
 
     const { data, error } = await query
@@ -264,10 +253,6 @@ export async function getAllSchedules(): Promise<Schedule[]> {
             cargo,
             billing_date,
             fare,
-            loading_date,
-            loading_time,
-            delivery_date,
-            delivery_time,
             created_at,
             updated_at,
             clients_kiro_nextjs!client_id(id, name),

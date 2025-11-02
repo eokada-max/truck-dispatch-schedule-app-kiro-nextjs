@@ -7,6 +7,7 @@ import type { Driver } from "@/types/Driver";
 import type { Vehicle } from "@/types/Vehicle";
 import type { Client } from "@/types/Client";
 import type { PartnerCompany } from "@/types/PartnerCompany";
+import type { Location } from "@/types/Location";
 import { ResourceViewToggle } from "@/components/schedules/ResourceViewToggle";
 import { ResourceCalendar } from "@/components/schedules/ResourceCalendar";
 import { ScheduleForm } from "@/components/schedules/ScheduleForm";
@@ -24,6 +25,7 @@ interface ResourceSchedulesClientProps {
   vehicles: Vehicle[];
   clients: Client[];
   partnerCompanies: PartnerCompany[];
+  locations: Location[];
 }
 
 export function ResourceSchedulesClient({
@@ -31,6 +33,7 @@ export function ResourceSchedulesClient({
   drivers,
   vehicles,
   clients,
+  locations,
 }: ResourceSchedulesClientProps) {
   // スケジュール状態管理
   const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules);
@@ -376,6 +379,7 @@ export function ResourceSchedulesClient({
         clients={clients}
         drivers={drivers}
         vehicles={vehicles}
+        locations={locations}
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         onSubmit={handleFormSubmit}

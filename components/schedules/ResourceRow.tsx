@@ -67,7 +67,11 @@ export function ResourceRow({
       <div className="grid grid-cols-7">
         {dates.map((date) => {
           const dateStr = format(date, "yyyy-MM-dd");
-          const daySchedules = schedules.filter(s => s.eventDate === dateStr);
+          // loadingDatetimeから日付部分を抽出してフィルタリング
+          const daySchedules = schedules.filter(s => {
+            const scheduleDate = s.loadingDatetime.split('T')[0];
+            return scheduleDate === dateStr;
+          });
 
           return (
             <ResourceCell
