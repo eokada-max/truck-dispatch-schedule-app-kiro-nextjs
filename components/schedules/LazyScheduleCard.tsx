@@ -8,6 +8,7 @@ interface LazyScheduleCardProps {
   schedule: Schedule;
   clientName?: string;
   driverName?: string;
+  vehicleName?: string;
   top: number;
   height: number;
   onClick?: () => void;
@@ -29,6 +30,7 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
   schedule,
   clientName,
   driverName,
+  vehicleName,
   top,
   height,
   onClick,
@@ -100,6 +102,7 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
           schedule={schedule}
           clientName={clientName}
           driverName={driverName}
+          vehicleName={vehicleName}
           onClick={onClick}
           isConflicting={isConflicting}
           isKeyboardMoving={isKeyboardMoving}

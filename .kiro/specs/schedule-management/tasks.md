@@ -1,204 +1,289 @@
 # Implementation Plan
 
-- [x] 1. プロジェクトのセットアップと初期設定
+## Phase 1: データベーススキーマの拡張
 
+- [x] 1. 場所マスタテーブルの作成
 
 
+  - Supabaseで`locations_kiro_nextjs`テーブルを作成する（id, name, address, created_at, updated_at）
+  - _Requirements: 11.1_
 
+- [x] 2. スケジュールテーブルのマイグレーション
 
+- [x] 2.1 新しいカラムを追加する
 
-  - Next.js 14+ プロジェクトを作成し、TypeScript、Tailwind CSS、App Routerを設定する
-  - `.gitignore`、`.env.example`、`README.md`を作成する
-  - Gitリポジトリを初期化し、GitHubにプッシュする
-  - Supabaseプロジェクトを作成し、接続情報を`.env.local`に設定する
-  - Shadcn/UIをインストールし、必要な基本コンポーネント（Button、Dialog、Input、Select）を追加する
-  - _Requirements: 7.1, 7.2_
 
-- [x] 2. データベーススキーマの作成
+  - `loading_date`, `loading_time`, `loading_location_id`, `loading_location_name`, `loading_address`を追加
+  - `delivery_date`, `delivery_time`, `delivery_location_id`, `delivery_location_name`, `delivery_address`を追加
+  - `cargo`, `billing_date`, `fare`を追加
+  - 全て NULL許可で追加
+  - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
 
 
-  - Supabaseで`clients_kiro_nextjs`テーブルを作成する（id, name, contact_info）
-  - Supabaseで`partner_companies_kiro_nextjs`テーブルを作成する（id, name, contact_info）
-  - Supabaseで`drivers_kiro_nextjs`テーブルを作成する（id, name, contact_info, is_in_house, partner_company_id）
-  - Supabaseで`schedules_kiro_nextjs`テーブルを作成する（id, event_date, start_time, end_time, title, destination_address, content, client_id, driver_id, created_at, updated_at）
-  - 必要なインデックスを作成する（event_date, driver_id, client_id）
-  - _Requirements: 6.1, 8.1, 8.2, 8.3_
+- [x] 2.2 既存データを新しいカラムにマッピングする
 
-- [x] 3. TypeScript型定義とSupabaseクライアントの実装
+  - `loading_date = event_date`, `loading_time = start_time`
+  - `delivery_date = event_date`, `delivery_time = end_time`
 
 
+  - `delivery_address = destination_address`
+  - _Requirements: 9.1, 9.2_
 
-  - `types/Schedule.ts`、`types/Client.ts`、`types/Driver.ts`、`types/PartnerCompany.ts`を作成する
-  - `lib/supabase/client.ts`（ブラウザ用Supabaseクライアント）を実装する
-  - `lib/supabase/server.ts`（サーバー用Supabaseクライアント）を実装する
-  - _Requirements: 6.1, 7.3_
 
+- [x] 2.3 必須制約を追加する
 
+  - `loading_date`, `loading_time`, `delivery_date`, `delivery_time`に NOT NULL制約を追加
+  - _Requirements: 9.1, 9.2_
 
+- [x] 2.4 インデックスを更新する
 
-- [ ] 4. ユーティリティ関数の実装
-  - `lib/utils/dateUtils.ts`に日付フォーマット、日付範囲生成関数を実装する
+  - `idx_schedules_loading_date`, `idx_schedules_delivery_date`を作成
 
 
+  - `idx_schedules_vehicle_id`, `idx_schedules_loading_location_id`, `idx_schedules_delivery_location_id`を作成
+  - _Requirements: 9.1, 9.2_
 
-  - `lib/utils/timeUtils.ts`に時間フォーマット、時間軸生成関数を実装する
-  - `lib/utils/errorHandler.ts`にエラーハンドリング関数を実装する
-  - _Requirements: 2.3, 7.5_
 
 
+## Phase 2: 型定義の更新
 
+- [x] 3. TypeScript型定義の更新
 
 
 
-- [ ] 5. 基本レイアウトとルーティングの実装
-  - `app/layout.tsx`にルートレイアウトを実装する（Tailwind CSS、フォント設定）
+- [x] 3.1 Location型を作成する
 
+  - `types/Location.ts`を作成する（id, name, address, createdAt, updatedAt）
+  - _Requirements: 11.1_
 
-  - `app/page.tsx`にトップページを実装する（スケジュール管理ページへのリダイレクトまたはリンク）
 
 
-  - `app/schedules/page.tsx`にスケジュール管理ページ（Server Component）を実装する
+- [x] 3.2 Schedule型を更新する
 
+  - `types/Schedule.ts`を更新する
+  - titleとcontentフィールドを削除
 
-  - _Requirements: 7.4_
 
-- [x] 6. データ取得ロジックの実装
+  - 積み地・着地・配送詳細・請求情報フィールドを追加
+  - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
 
-- [ ] 6.1 スケジュールデータ取得関数を実装する
-  - `app/schedules/page.tsx`でSupabaseからスケジュールデータを取得する関数を実装する
-  - 日付範囲でフィルタリングするクエリを実装する
-  - _Requirements: 2.1, 6.2_
+- [ ] 3.3 データベース型定義を更新する
+  - `types/database.ts`を更新して新しいスキーマを反映
+  - _Requirements: 9.1, 9.2_
 
+## Phase 3: 場所マスタ管理機能の実装
 
+- [ ] 4. 場所マスタAPI関数の実装
+- [ ] 4.1 場所データ取得関数を実装する
+  - `lib/api/locations.ts`を作成
+  - `getAllLocations()`, `getLocationById()`を実装
+  - _Requirements: 11.2, 11.3, 11.4_
 
+- [ ] 4.2 場所データCRUD関数を実装する
+  - `createLocation()`, `updateLocation()`, `deleteLocation()`を実装
+  - _Requirements: 11.2_
 
+- [x] 5. 場所マスタUIコンポーネントの実装
 
+- [x] 5.1 LocationFormコンポーネントを実装する
 
-- [ ] 6.2 クライアントとドライバーデータ取得関数を実装する
-  - クライアント一覧を取得する関数を実装する
-  - ドライバー一覧を取得する関数を実装する
-  - _Requirements: 8.4_
 
+  - `components/locations/LocationForm.tsx`を作成
+  - 地名、住所の入力フィールドを実装
+  - バリデーション（必須チェック）を実装
+  - _Requirements: 11.2_
 
+- [x] 5.2 LocationListコンポーネントを実装する
 
 
-- [ ] 7. TimelineCalendarコンポーネントの実装
-- [x] 7.1 TimelineCalendarの基本構造を実装する
+  - `components/locations/LocationList.tsx`を作成
+  - 場所一覧表示を実装
+  - 編集・削除ボタンを実装
+  - _Requirements: 11.2_
 
+- [x] 5.3 場所マスタ管理ページを作成する
 
 
-  - `components/schedules/TimelineCalendar.tsx`（Client Component）を作成する
-  - 日付列と時間軸のグリッドレイアウトを実装する
-  - _Requirements: 2.1, 2.2, 2.3_
+  - `app/locations/page.tsx`を作成
+  - LocationListとLocationFormを統合
+  - _Requirements: 11.2_
 
-- [ ] 7.2 スケジュールカードの配置ロジックを実装する
-  - スケジュールを日付と時間に基づいて適切な位置に配置する
-  - 空白セルを表示する
-  - _Requirements: 2.4, 2.6_
+## Phase 4: スケジュールフォームの拡張
 
-- [ ] 7.3 ScheduleCardコンポーネントを実装する
-  - `components/schedules/ScheduleCard.tsx`を作成する
-  - タイトルと届け先住所を表示する
-  - クリックイベントハンドラーを実装する
-  - _Requirements: 2.5, 3.1_
+- [x] 6. ScheduleFormコンポーネントの大幅な改修
 
-- [ ] 8. DateNavigationコンポーネントの実装
-  - `components/schedules/DateNavigation.tsx`（Client Component）を作成する
-  - 前へ、次へ、今日ボタンを実装する
 
-  - 現在の年月表示を実装する
-  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+- [x] 6.1 タブ式フォームの実装
 
-- [ ] 9. ScheduleFormコンポーネントの実装
-- [ ] 9.1 ScheduleFormの基本構造を実装する
-  - `components/schedules/ScheduleForm.tsx`（Client Component）を作成する
-  - Dialogコンポーネントでモーダル表示を実装する
-  - 全ての入力フィールド（日付、開始時間、終了時間、タイトル、届け先住所、詳細内容、クライアント、ドライバー）を実装する
-  - _Requirements: 1.1, 1.2_
 
-- [ ] 9.2 フォームバリデーションを実装する
-  - 必須フィールドのバリデーションを実装する
-  - 時間の妥当性チェック（開始時間 < 終了時間）を実装する
-  - エラーメッセージ表示を実装する
-  - _Requirements: 1.3_
 
-- [x] 9.3 スケジュール作成機能を実装する
 
-  - フォーム送信時にSupabaseにデータを保存する処理を実装する
-  - 成功時にモーダルを閉じてタイムラインを更新する
-  - _Requirements: 1.4, 1.5_
+  - Shadcn/UIのTabsコンポーネントを使用
+  - [基本情報] [積み地] [着地] [配送] [請求]の5タブを実装
+  - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.6_
 
-- [x] 9.4 スケジュール編集機能を実装する
+- [x] 6.2 基本情報タブの実装
 
-  - 既存スケジュールデータの事前入力を実装する
-  - 更新処理を実装する
-  - _Requirements: 3.2, 3.3, 3.4_
 
-- [x] 9.5 スケジュール削除機能を実装する
+  - クライアント選択（ドロップダウン、任意）
+  - ドライバー選択（ドロップダウン、任意）
+  - _Requirements: 1.2_
 
-  - 削除ボタンと確認ダイアログを実装する
-  - 削除処理を実装する
-  - _Requirements: 4.1, 4.2, 4.3_
+- [x] 6.3 積み地タブの実装
 
-- [x] 10. スケジュール管理ページの統合
+  - 積日（必須）
+  - 積時間（必須）
+  - 積地選択（ドロップダウン、場所マスタから選択、任意）
+  - 積地名（手動入力、任意）
+  - 積地住所（手動入力、任意）
+  - 場所選択時に地名と住所を自動入力
+  - _Requirements: 1.3, 11.3, 11.4, 11.5_
 
+- [x] 6.4 着地タブの実装
 
-  - `app/schedules/page.tsx`でDateNavigation、TimelineCalendar、ScheduleFormを統合する
-  - 状態管理（表示期間、選択されたスケジュール、モーダル開閉）を実装する
-  - スケジュール登録ボタンをヘッダーに配置する
-  - _Requirements: 1.1, 2.1, 5.1_
+  - 着日（必須）
+  - 着時間（必須）
+  - 着地選択（ドロップダウン、場所マスタから選択、任意）
+  - 着地名（手動入力、任意）
+  - 着地住所（手動入力、任意）
+  - 場所選択時に地名と住所を自動入力
+  - _Requirements: 1.4, 11.3, 11.4, 11.5_
 
-- [x] 11. エラーハンドリングとローディング状態の実装
+- [x] 6.5 配送詳細タブの実装
 
+  - 荷物（任意）
+  - 車両選択（ドロップダウン、任意）
+  - _Requirements: 1.5, 9.5_
 
+- [x] 6.6 請求情報タブの実装
 
+  - 請求日（任意）
+  - 運賃（円、任意）
+  - _Requirements: 1.6_
 
-  - エラーバウンダリーを実装する
-  - ローディングスピナーまたはスケルトンUIを実装する
-  - トーストメッセージ（成功・エラー通知）を実装する
-  - _Requirements: 7.5_
+- [x] 6.7 フォームバリデーションの更新
 
-- [x] 12. レスポンシブデザインの調整
+  - 必須フィールド: 積日、積時間、着日、着時間のみ
+  - 時刻形式チェック（HH:MM）
+  - 日付の論理チェック（着日 >= 積日）
+  - 運賃の数値チェック
+  - _Requirements: 1.7, 9.6, 9.7, 9.8, 9.9_
 
+- [x] 6.8 スケジュール作成・更新処理の修正
 
+  - 新しいフィールドをSupabaseに保存
+  - 場所マスタIDと手動入力の両方に対応
+  - _Requirements: 1.8, 1.9_
 
-  - モバイル、タブレット、デスクトップでの表示を最適化する
-  - タイムラインの横スクロール対応を実装する
+## Phase 5: タイムライン表示の更新
 
+- [ ] 7. TimelineCalendarコンポーネントの更新
+- [ ] 7.1 複数日にまたがるスケジュール表示ロジックを実装する
+  - 積み地日時（START）から着地日時（END）までの期間を計算
+  - 開始日から終了日まで連続してスケジュールカードを表示
+  - _Requirements: 10.3, 10.4, 10.5_
 
+- [x] 7.2 ScheduleCardコンポーネントの更新
 
-  - _Requirements: 7.2_
 
-- [x] 13. パフォーマンス最適化
 
+  - タイトルを削除
+  - 積地名 → 着地名を表示
+  - 車両情報（車番）を表示
+  - _Requirements: 10.1, 10.2_
 
+- [ ] 7.3 スケジュール詳細表示の更新
+  - 全ての詳細情報（積み地、着地、配送詳細、請求情報）を表示
+  - 情報をグループ化して見やすく表示
+  - 未入力項目は「未設定」と表示
+  - _Requirements: 10.6, 10.7, 10.8_
 
-  - React Server Componentsの適切な使用を確認する
-  - 動的インポートでScheduleFormを遅延ロードする
-  - Supabaseクエリの最適化（必要なカラムのみ取得）を実施する
-  - _Requirements: 7.3, 7.4_
+## Phase 6: API関数の更新
 
-- [ ] 14. 初期データの投入（オプション）
-  - 開発・テスト用のサンプルクライアントデータを投入する
-  - 開発・テスト用のサンプルドライバーデータを投入する
-  - 開発・テスト用のサンプルスケジュールデータを投入する
-  - _Requirements: 8.1, 8.2, 8.3_
+- [ ] 8. スケジュールAPI関数の更新
+- [ ] 8.1 データ取得クエリを更新する
+  - `lib/api/schedules.ts`を更新
+  - 新しいフィールドを含めてクエリを実行
+  - 場所マスタ、車両、クライアント、ドライバーをJOINして取得
+  - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 15. テストの作成
-  - ユーティリティ関数の単体テストを作成する
-  - TimelineCalendarコンポーネントのテストを作成する
-  - ScheduleFormコンポーネントのテストを作成する
+- [ ] 8.2 日付範囲フィルタリングを更新する
+  - `loading_date`と`delivery_date`の両方を考慮
+  - 複数日にまたがるスケジュールを正しく取得
+  - _Requirements: 10.5_
+
+## Phase 7: ユーティリティ関数の追加
+
+- [ ] 9. タイムライン表示用ユーティリティ関数を実装する
+  - `lib/utils/scheduleUtils.ts`を作成
+  - `calculateScheduleDuration()`（積日時から着日時までの期間を計算）
+  - `getScheduleDays()`（スケジュールが表示される日付の配列を取得）
+  - _Requirements: 10.5_
+
+## Phase 8: ナビゲーションとルーティングの更新
+
+- [x] 10. サイドバーまたはナビゲーションに場所マスタへのリンクを追加する
+
+
+
+  - `components/layout/Sidebar.tsx`または`Navigation.tsx`を更新
+  - 場所マスタ管理ページへのリンクを追加
+  - _Requirements: 11.2_
+
+## Phase 9: データマイグレーションとテスト
+
+- [ ] 11. 既存データの移行テスト
+  - 既存のスケジュールデータが新しいスキーマで正しく表示されるか確認
+  - 古いフィールド（title, content, event_date, start_time, end_time, destination_address）の削除を検討
   - _Requirements: 全体_
 
-- [x] 16. 最終確認とデプロイ準備
+- [x] 12. デモデータの投入
 
 
+- [x] 12.1 既存データの削除と新規デモデータの投入
 
+  - `supabase/reset_and_seed_data.sql`をSupabase SQL Editorで実行
+  - 既存の全テーブルデータを削除（schedules, drivers, vehicles, locations, clients, partner_companies）
+  - 新しいスキーマに対応したデモデータを投入
+  - 場所マスタ（12箇所）、クライアント（5社）、協力会社（3社）、車両（7台）、ドライバー（7名）、スケジュール（13件）を登録
+  - 複数日にまたがるスケジュール例も含む
+  - _Requirements: 全体_
 
+## Phase 10: 最終調整とテスト
 
-  - 全ての要件が満たされているか確認する
-  - 環境変数が正しく設定されているか確認する
-  - Vercelへのデプロイ設定を確認する
+- [*] 13. ユニットテストの作成
+  - 場所マスタAPI関数のテスト
+  - スケジュール表示ロジックのテスト
+  - バリデーション関数のテスト
+  - _Requirements: 全体_
+
+- [ ] 14. 統合テストとE2Eテスト
+  - スケジュール登録フローのテスト
+  - 場所マスタ管理フローのテスト
+  - 複数日にまたがるスケジュール表示のテスト
+  - _Requirements: 全体_
+
+- [ ] 15. UIの最終調整
+  - レスポンシブデザインの確認
+  - アクセシビリティの確認
+  - エラーメッセージの確認
+  - _Requirements: 7.1, 7.2, 7.5_
+
+- [ ] 16. パフォーマンス最適化
+  - 場所マスタのキャッシング
+  - スケジュール取得クエリの最適化
+  - 不要な再レンダリングの削減
+  - _Requirements: 7.3, 7.4_
+
+- [ ] 17. ドキュメントの更新
+  - README.mdを更新（新機能の説明）
+  - マイグレーション手順のドキュメント作成
+  - _Requirements: 全体_
+
+- [ ] 18. 最終確認とデプロイ
+  - 全ての要件が満たされているか確認
+  - 環境変数の確認
+  - Vercelへのデプロイ
   - _Requirements: 全体_

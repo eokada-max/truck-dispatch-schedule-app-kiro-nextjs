@@ -10,6 +10,7 @@ interface DraggableScheduleCardProps {
   schedule: Schedule;
   clientName?: string;
   driverName?: string;
+  vehicleName?: string;
   onClick?: () => void;
   isConflicting?: boolean;
   isKeyboardMoving?: boolean;
@@ -24,6 +25,7 @@ export const DraggableScheduleCard = memo(function DraggableScheduleCard({
   schedule,
   clientName,
   driverName,
+  vehicleName,
   onClick,
   isConflicting = false,
   isKeyboardMoving = false,
@@ -53,6 +55,7 @@ export const DraggableScheduleCard = memo(function DraggableScheduleCard({
         schedule={schedule}
         clientName={clientName}
         driverName={driverName}
+        vehicleName={vehicleName}
         onClick={onClick}
         isConflicting={isConflicting}
         isKeyboardMoving={isKeyboardMoving}

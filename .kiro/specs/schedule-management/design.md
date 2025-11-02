@@ -49,6 +49,99 @@
 - **Client Components**: インタラクティブなUI、状態管理、フォーム処理
 - **Streaming**: Suspenseを使用した段階的なコンテンツ表示
 
+## UI Design
+
+### フォームレイアウト
+
+スケジュール登録・編集フォームは、情報量が多いため、以下のいずれかのアプローチを採用：
+
+**アプローチ1: タブ式フォーム（推奨）**
+```
+┌─────────────────────────────────────────┐
+│ スケジュール登録                         │
+├─────────────────────────────────────────┤
+│ [基本情報] [積み地] [着地] [配送] [請求] │
+├─────────────────────────────────────────┤
+│                                         │
+│  タイトル: [_______________]            │
+│  クライアント: [▼選択してください]      │
+│  ドライバー: [▼選択してください]        │
+│  詳細内容: [_______________]            │
+│                                         │
+├─────────────────────────────────────────┤
+│              [キャンセル] [保存]         │
+└─────────────────────────────────────────┘
+```
+
+**アプローチ2: アコーディオン式フォーム**
+- 各セクションを折りたたみ可能に
+- デフォルトで基本情報と積み地・着地を展開
+
+**アプローチ3: 縦長スクロール式**
+- 全セクションを縦に並べる
+- セクションごとに視覚的に区切る
+
+### スケジュールカード表示
+
+```
+┌──────────────────────┐
+│ 東京配送             │  ← タイトル
+│ 新宿 → 渋谷          │  ← 積地名 → 着地名
+│ 🚚 品川500あ1234     │  ← 車両情報
+│ 09:00 - 12:00        │  ← 時間
+└──────────────────────┘
+```
+
+## Timeline Display Logic
+
+### 複数日にまたがるスケジュールの表示
+
+スケジュールは積み地日時（START）から着地日時（END）までの期間を持つ。
+
+**表示ルール**:
+1. 積み地日時 = スケジュールの開始時刻
+2. 着地日時 = スケジュールの終了時刻
+3. 複数日にまたがる場合、開始日から終了日まで連続して表示
+
+**例**:
+```
+積日: 2024-07-01 09:00
+着日: 2024-07-03 15:00
+
+タイムライン表示:
+┌─────────┬─────────┬─────────┐
+│ 7/1     │ 7/2     │ 7/3     │
+├─────────┼─────────┼─────────┤
+│ 09:00   │ 00:00   │ 00:00   │
+│ [スケジュール継続表示]       │
+│         │         │ 15:00   │
+└─────────┴─────────┴─────────┘
+```
+
+**実装アプローチ**:
+```typescript
+function renderScheduleAcrossDays(schedule: Schedule) {
+  const startDate = new Date(`${schedule.loadingDate}T${schedule.loadingTime}`);
+  const endDate = new Date(`${schedule.deliveryDate}T${schedule.deliveryTime}`);
+  
+  // 開始日から終了日までの日数を計算
+  const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+  
+  // 各日ごとにスケジュールカードを配置
+  for (let i = 0; i <= daysDiff; i++) {
+    const currentDate = new Date(startDate);
+    currentDate.setDate(startDate.getDate() + i);
+    
+    // その日の開始時刻と終了時刻を計算
+    const dayStart = i === 0 ? schedule.loadingTime : '00:00';
+    const dayEnd = i === daysDiff ? schedule.deliveryTime : '24:00';
+    
+    // スケジュールカードを配置
+    renderScheduleCard(schedule, currentDate, dayStart, dayEnd);
+  }
+}
+```
+
 ## Components and Interfaces
 
 ### ディレクトリ構造
@@ -73,6 +166,9 @@ components/
 │   ├── ScheduleCard.tsx       # スケジュールカード (Client Component)
 │   ├── ScheduleForm.tsx       # スケジュール登録/編集フォーム (Client Component)
 │   └── DateNavigation.tsx     # 日付ナビゲーション (Client Component)
+├── locations/
+│   ├── LocationForm.tsx       # 場所登録/編集フォーム (Client Component)
+│   └── LocationList.tsx       # 場所一覧 (Client Component)
 └── layout/
     └── Header.tsx             # ヘッダー (Client Component)
 
@@ -88,6 +184,8 @@ types/
 ├── Schedule.ts                # スケジュール型定義
 ├── Client.ts                  # クライアント型定義
 ├── Driver.ts                  # ドライバー型定義
+├── Vehicle.ts                 # 車両型定義
+├── Location.ts                # 場所型定義
 └── PartnerCompany.ts          # 協力会社型定義
 ```
 
@@ -127,6 +225,8 @@ interface ScheduleFormProps {
   schedule?: Schedule;  // 編集時のみ
   clients: Client[];
   drivers: Driver[];
+  vehicles: Vehicle[];
+  locations: Location[];  // 場所マスタ
   onSubmit: (data: ScheduleFormData) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
   onClose: () => void;
@@ -134,13 +234,44 @@ interface ScheduleFormProps {
 ```
 
 **状態管理**:
-- フォーム入力値
+- フォーム入力値（タブまたはセクションごとに管理）
 - バリデーションエラー
 - 送信中フラグ
+- アクティブなタブ/セクション
+
+**フォーム構成**:
+1. **基本情報セクション**
+   - クライアント（ドロップダウン、任意）
+   - ドライバー（ドロップダウン、任意）
+
+2. **積み地情報セクション**
+   - 積日（必須）
+   - 積時間（必須）
+   - 積地選択（ドロップダウン、場所マスタから選択）
+   - 積地名（手動入力も可能）
+   - 積地住所（手動入力も可能）
+
+3. **着地情報セクション**
+   - 着日（必須）
+   - 着時間（必須）
+   - 着地選択（ドロップダウン、場所マスタから選択）
+   - 着地名（手動入力も可能）
+   - 着地住所（手動入力も可能）
+
+4. **配送詳細セクション**
+   - 荷物（任意）
+   - 車両（ドロップダウン、任意）
+
+5. **請求情報セクション**
+   - 請求日（任意）
+   - 運賃（円、任意）
 
 **バリデーション**:
-- 必須フィールド: 日付、開始時間、終了時間、タイトル
-- 時間の妥当性チェック（開始時間 < 終了時間）
+- 必須フィールド: 積日、積時間、着日、着時間
+- 任意フィールド: タイトル、クライアント、ドライバー、車両、荷物、請求日、運賃
+- 時刻形式チェック（HH:MM）
+- 日付の論理チェック（着日 >= 積日）
+- 運賃の数値チェック（入力された場合）
 
 #### 3. DateNavigation (Client Component)
 
@@ -164,14 +295,82 @@ interface DateNavigationProps {
 ```typescript
 interface ScheduleCardProps {
   schedule: Schedule;
+  vehicle?: Vehicle;  // 車両情報（JOIN結果）
   onClick: () => void;
 }
 ```
 
 **表示内容**:
-- タイトル
-- 届け先住所
+- 積地名 → 着地名
+- 車両情報（車番）
 - 時間範囲（視覚的な高さで表現）
+
+**表示優先順位**:
+1. 積地名 → 着地名（メイン情報）
+2. 車番（車両が選択されている場合）
+3. 時間情報
+4. その他の情報（クライアント名など）
+
+## Migration Strategy
+
+### 既存データからの移行
+
+既存の `schedules_kiro_nextjs` テーブルには以下のカラムが存在：
+- `event_date`, `start_time`, `end_time`
+- `title`, `destination_address`, `content`
+- `client_id`, `driver_id`
+
+### マイグレーション手順
+
+**ステップ1: 新しいカラムを追加（NULL許可）**
+```sql
+ALTER TABLE schedules_kiro_nextjs
+  ADD COLUMN loading_date DATE,
+  ADD COLUMN loading_time TIME,
+  ADD COLUMN loading_location_name TEXT,
+  ADD COLUMN loading_address TEXT,
+  ADD COLUMN delivery_date DATE,
+  ADD COLUMN delivery_time TIME,
+  ADD COLUMN delivery_location_name TEXT,
+  ADD COLUMN delivery_address TEXT,
+  ADD COLUMN cargo TEXT,
+  ADD COLUMN vehicle_id UUID REFERENCES vehicles_kiro_nextjs(id),
+  ADD COLUMN billing_date DATE,
+  ADD COLUMN fare NUMERIC;
+```
+
+**ステップ2: 既存データを新しいカラムにマッピング**
+```sql
+UPDATE schedules_kiro_nextjs SET
+  loading_date = event_date,
+  loading_time = start_time,
+  delivery_date = event_date,
+  delivery_time = end_time,
+  delivery_address = destination_address;
+```
+
+**ステップ3: 必須制約を追加**
+```sql
+ALTER TABLE schedules_kiro_nextjs
+  ALTER COLUMN loading_date SET NOT NULL,
+  ALTER COLUMN loading_time SET NOT NULL,
+  ALTER COLUMN delivery_date SET NOT NULL,
+  ALTER COLUMN delivery_time SET NOT NULL;
+```
+
+**ステップ4: 古いカラムを削除（オプション）**
+```sql
+-- 後方互換性が不要になったら実行
+ALTER TABLE schedules_kiro_nextjs
+  DROP COLUMN event_date,
+  DROP COLUMN start_time,
+  DROP COLUMN end_time,
+  DROP COLUMN destination_address;
+```
+
+### 後方互換性の維持
+
+移行期間中は、古いカラムと新しいカラムの両方を保持し、アプリケーション側で両方に書き込む。
 
 ## Data Models
 
@@ -181,14 +380,33 @@ interface ScheduleCardProps {
 // types/Schedule.ts
 export interface Schedule {
   id: string;
-  eventDate: string;        // ISO 8601 date format
-  startTime: string;        // HH:mm format
-  endTime: string;          // HH:mm format
-  title: string;
-  destinationAddress: string;
-  content: string;
+  // 基本情報
   clientId: string | null;
   driverId: string | null;
+  vehicleId: string | null;
+  
+  // 積み地情報
+  loadingDate: string;           // ISO 8601 date format (必須)
+  loadingTime: string;           // HH:mm format (必須)
+  loadingLocationId: string | null;  // 場所マスタID（任意）
+  loadingLocationName: string | null;  // 地名（任意、手動入力可）
+  loadingAddress: string | null;     // 住所（任意、手動入力可）
+  
+  // 着地情報
+  deliveryDate: string;          // ISO 8601 date format (必須)
+  deliveryTime: string;          // HH:mm format (必須)
+  deliveryLocationId: string | null;  // 場所マスタID（任意）
+  deliveryLocationName: string | null;  // 地名（任意、手動入力可）
+  deliveryAddress: string | null;     // 住所（任意、手動入力可）
+  
+  // 配送詳細
+  cargo: string | null;          // 荷物（任意）
+  
+  // 請求情報
+  billingDate: string | null;    // ISO 8601 date format（任意）
+  fare: number | null;           // 運賃（円、任意）
+  
+  // システム情報
   createdAt: string;
   updatedAt: string;
 }
@@ -209,11 +427,29 @@ export interface Driver {
   partnerCompanyId: string | null;
 }
 
+// types/Vehicle.ts
+export interface Vehicle {
+  id: string;
+  vehicleNumber: string;    // 車番
+  vehicleType: string;      // 車種
+  capacity: number | null;
+  notes: string | null;
+}
+
 // types/PartnerCompany.ts
 export interface PartnerCompany {
   id: string;
   name: string;
   contactInfo: string;
+}
+
+// types/Location.ts
+export interface Location {
+  id: string;
+  name: string;           // 地名（例: 「新宿倉庫」）
+  address: string;        // 住所（例: 「東京都新宿区...」）
+  createdAt: string;
+  updatedAt: string;
 }
 ```
 
@@ -243,25 +479,67 @@ CREATE TABLE drivers_kiro_nextjs (
   partner_company_id UUID REFERENCES partner_companies_kiro_nextjs(id)
 );
 
--- Schedules テーブル
+-- Vehicles テーブル
+CREATE TABLE vehicles_kiro_nextjs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  vehicle_number TEXT NOT NULL,
+  vehicle_type TEXT NOT NULL,
+  capacity NUMERIC,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Locations テーブル（場所マスタ）
+CREATE TABLE locations_kiro_nextjs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  address TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Schedules テーブル（拡張版）
 CREATE TABLE schedules_kiro_nextjs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_date DATE NOT NULL,
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  title TEXT NOT NULL,
-  destination_address TEXT NOT NULL,
-  content TEXT,
+  
+  -- 基本情報
   client_id UUID REFERENCES clients_kiro_nextjs(id),
   driver_id UUID REFERENCES drivers_kiro_nextjs(id),
+  vehicle_id UUID REFERENCES vehicles_kiro_nextjs(id),
+  
+  -- 積み地情報
+  loading_date DATE NOT NULL,
+  loading_time TIME NOT NULL,
+  loading_location_id UUID REFERENCES locations_kiro_nextjs(id),
+  loading_location_name TEXT,
+  loading_address TEXT,
+  
+  -- 着地情報
+  delivery_date DATE NOT NULL,
+  delivery_time TIME NOT NULL,
+  delivery_location_id UUID REFERENCES locations_kiro_nextjs(id),
+  delivery_location_name TEXT,
+  delivery_address TEXT,
+  
+  -- 配送詳細
+  cargo TEXT,
+  
+  -- 請求情報
+  billing_date DATE,
+  fare NUMERIC,
+  
+  -- システム情報
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- インデックス
-CREATE INDEX idx_schedules_kiro_nextjs_event_date ON schedules_kiro_nextjs(event_date);
-CREATE INDEX idx_schedules_kiro_nextjs_driver_id ON schedules_kiro_nextjs(driver_id);
-CREATE INDEX idx_schedules_kiro_nextjs_client_id ON schedules_kiro_nextjs(client_id);
+CREATE INDEX idx_schedules_loading_date ON schedules_kiro_nextjs(loading_date);
+CREATE INDEX idx_schedules_delivery_date ON schedules_kiro_nextjs(delivery_date);
+CREATE INDEX idx_schedules_driver_id ON schedules_kiro_nextjs(driver_id);
+CREATE INDEX idx_schedules_client_id ON schedules_kiro_nextjs(client_id);
+CREATE INDEX idx_schedules_vehicle_id ON schedules_kiro_nextjs(vehicle_id);
 ```
 
 ## Error Handling

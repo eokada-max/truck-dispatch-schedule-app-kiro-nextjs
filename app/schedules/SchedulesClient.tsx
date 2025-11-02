@@ -11,7 +11,7 @@ import { Plus } from "lucide-react";
 import { addDays, getToday, getMonday, getSunday } from "@/lib/utils/dateUtils";
 // Client側ではブラウザ用のAPI関数を使用
 import { createClient } from "@/lib/supabase/client";
-import { toScheduleInsert, toScheduleUpdate } from "@/lib/utils/typeConverters";
+import { toSchedule, toScheduleInsert, toScheduleUpdate } from "@/lib/utils/typeConverters";
 import { getErrorMessage } from "@/lib/utils/errorHandler";
 import type { ScheduleFormData } from "@/types/Schedule";
 import { cache } from "@/lib/utils/cache";
@@ -31,12 +31,14 @@ const ScheduleForm = lazy(() =>
 );
 
 import type { Vehicle } from "@/types/Vehicle";
+import type { Location } from "@/types/Location";
 
 interface SchedulesClientProps {
   initialSchedules: Schedule[];
   clients: Client[];
   drivers: Driver[];
   vehicles: Vehicle[];
+  locations: Location[];
   initialStartDate: Date;
 }
 
@@ -45,6 +47,7 @@ export function SchedulesClient({
   clients,
   drivers,
   vehicles,
+  locations,
   initialStartDate,
 }: SchedulesClientProps) {
   const [currentDate, setCurrentDate] = useState(initialStartDate);
@@ -66,7 +69,10 @@ export function SchedulesClient({
     if (schedules.length === 0) return;
     
     // 取得済みスケジュールの日付範囲を計算
-    const scheduleDates = schedules.map(s => new Date(s.eventDate));
+    const scheduleDates = schedules
+      .filter(s => s.loadingDate || s.eventDate)
+      .map(s => new Date(s.loadingDate || s.eventDate!));
+    if (scheduleDates.length === 0) return;
     const minDate = new Date(Math.min(...scheduleDates.map(d => d.getTime())));
     const maxDate = new Date(Math.max(...scheduleDates.map(d => d.getTime())));
     
@@ -160,15 +166,31 @@ export function SchedulesClient({
         // 楽観的UI更新：即座にローカル状態を更新
         const updatedSchedule: Schedule = {
           ...selectedSchedule,
-          eventDate: data.eventDate,
-          startTime: data.startTime,
-          endTime: data.endTime,
-          title: data.title,
-          destinationAddress: data.destinationAddress,
-          content: data.content || '',
-          clientId: data.clientId || '',
-          driverId: data.driverId || '',
+          clientId: data.clientId || null,
+          driverId: data.driverId || null,
           vehicleId: data.vehicleId || null,
+          loadingDate: data.loadingDate,
+          loadingTime: data.loadingTime,
+          loadingLocationId: data.loadingLocationId || null,
+          loadingLocationName: data.loadingLocationName || null,
+          loadingAddress: data.loadingAddress || null,
+          deliveryDate: data.deliveryDate,
+          deliveryTime: data.deliveryTime,
+          deliveryLocationId: data.deliveryLocationId || null,
+          deliveryLocationName: data.deliveryLocationName || null,
+          deliveryAddress: data.deliveryAddress || null,
+          cargo: data.cargo || null,
+          billingDate: data.billingDate || null,
+          fare: data.fare ? Number(data.fare) : null,
+          // 旧フィールドも更新（後方互換性）
+          eventDate: data.loadingDate,
+          startTime: data.loadingTime,
+          endTime: data.deliveryTime,
+          title: data.loadingLocationName && data.deliveryLocationName 
+            ? `${data.loadingLocationName} → ${data.deliveryLocationName}`
+            : null,
+          destinationAddress: data.deliveryAddress || null,
+          content: data.cargo || null,
         };
         
         setSchedules(prev =>
@@ -212,21 +234,7 @@ export function SchedulesClient({
         
         // 楽観的UI更新：即座にローカル状態を更新
         if (insertedData) {
-          const newSchedule: Schedule = {
-            id: insertedData.id,
-            eventDate: insertedData.event_date,
-            startTime: insertedData.start_time,
-            endTime: insertedData.end_time,
-            title: insertedData.title,
-            destinationAddress: insertedData.destination_address,
-            content: insertedData.content || '',
-            clientId: insertedData.client_id || '',
-            driverId: insertedData.driver_id || '',
-            vehicleId: insertedData.vehicle_id || null,
-            createdAt: insertedData.created_at,
-            updatedAt: insertedData.updated_at,
-          };
-          
+          const newSchedule: Schedule = toSchedule(insertedData);
           setSchedules(prev => [...prev, newSchedule]);
           
           // 自分の操作を記録（リアルタイム更新をスキップするため）
@@ -366,6 +374,7 @@ export function SchedulesClient({
             schedules={schedules}
             clients={clients}
             drivers={drivers}
+            vehicles={vehicles}
             startDate={startDate}
             endDate={endDate}
             onScheduleClick={handleScheduleClick}
@@ -383,6 +392,7 @@ export function SchedulesClient({
             clients={clients}
             drivers={drivers}
             vehicles={vehicles}
+            locations={locations}
             open={isFormOpen}
             onOpenChange={setIsFormOpen}
             onSubmit={handleFormSubmit}

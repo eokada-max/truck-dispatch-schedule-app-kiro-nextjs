@@ -101,46 +101,129 @@ export interface Database {
           updated_at?: string;
         };
       };
-      schedules_kiro_nextjs: {
+      locations_kiro_nextjs: {
         Row: {
           id: string;
-          event_date: string;
-          start_time: string;
-          end_time: string;
-          title: string;
-          destination_address: string;
-          content: string | null;
-          client_id: string | null;
-          driver_id: string | null;
-          vehicle_id: string | null;
+          name: string;
+          address: string;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
-          event_date: string;
-          start_time: string;
-          end_time: string;
-          title: string;
-          destination_address: string;
-          content?: string | null;
-          client_id?: string | null;
-          driver_id?: string | null;
-          vehicle_id?: string | null;
+          name: string;
+          address: string;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
-          event_date?: string;
-          start_time?: string;
-          end_time?: string;
-          title?: string;
-          destination_address?: string;
-          content?: string | null;
+          name?: string;
+          address?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      schedules_kiro_nextjs: {
+        Row: {
+          id: string;
+          // 基本情報
+          client_id: string | null;
+          driver_id: string | null;
+          vehicle_id: string | null;
+          // 積み地情報
+          loading_date: string;
+          loading_time: string;
+          loading_location_id: string | null;
+          loading_location_name: string | null;
+          loading_address: string | null;
+          // 着地情報
+          delivery_date: string;
+          delivery_time: string;
+          delivery_location_id: string | null;
+          delivery_location_name: string | null;
+          delivery_address: string | null;
+          // 配送詳細
+          cargo: string | null;
+          // 請求情報
+          billing_date: string | null;
+          fare: number | null;
+          // 旧フィールド（後方互換性）
+          event_date: string | null;
+          start_time: string | null;
+          end_time: string | null;
+          title: string | null;
+          destination_address: string | null;
+          content: string | null;
+          // システム情報
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          // 基本情報
           client_id?: string | null;
           driver_id?: string | null;
           vehicle_id?: string | null;
+          // 積み地情報
+          loading_date: string;
+          loading_time: string;
+          loading_location_id?: string | null;
+          loading_location_name?: string | null;
+          loading_address?: string | null;
+          // 着地情報
+          delivery_date: string;
+          delivery_time: string;
+          delivery_location_id?: string | null;
+          delivery_location_name?: string | null;
+          delivery_address?: string | null;
+          // 配送詳細
+          cargo?: string | null;
+          // 請求情報
+          billing_date?: string | null;
+          fare?: number | null;
+          // 旧フィールド
+          event_date?: string | null;
+          start_time?: string | null;
+          end_time?: string | null;
+          title?: string | null;
+          destination_address?: string | null;
+          content?: string | null;
+          // システム情報
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          // 基本情報
+          client_id?: string | null;
+          driver_id?: string | null;
+          vehicle_id?: string | null;
+          // 積み地情報
+          loading_date?: string;
+          loading_time?: string;
+          loading_location_id?: string | null;
+          loading_location_name?: string | null;
+          loading_address?: string | null;
+          // 着地情報
+          delivery_date?: string;
+          delivery_time?: string;
+          delivery_location_id?: string | null;
+          delivery_location_name?: string | null;
+          delivery_address?: string | null;
+          // 配送詳細
+          cargo?: string | null;
+          // 請求情報
+          billing_date?: string | null;
+          fare?: number | null;
+          // 旧フィールド
+          event_date?: string | null;
+          start_time?: string | null;
+          end_time?: string | null;
+          title?: string | null;
+          destination_address?: string | null;
+          content?: string | null;
+          // システム情報
           created_at?: string;
           updated_at?: string;
         };

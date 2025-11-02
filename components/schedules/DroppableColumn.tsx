@@ -3,6 +3,7 @@ import { useDroppable } from "@dnd-kit/core";
 import type { Schedule } from "@/types/Schedule";
 import type { Client } from "@/types/Client";
 import type { Driver } from "@/types/Driver";
+import type { Vehicle } from "@/types/Vehicle";
 import { calculateScheduleLayouts, getLayoutStyle } from "@/lib/utils/scheduleLayout";
 import { LazyScheduleCard } from "./LazyScheduleCard";
 import { TimeSlotGrid } from "./TimeSlotGrid";
@@ -23,6 +24,7 @@ interface DroppableColumnProps {
   schedules: Schedule[];
   clientsMap: Map<string, Client>;
   driversMap: Map<string, Driver>;
+  vehiclesMap: Map<string, Vehicle>;
   calculateSchedulePosition: (schedule: Schedule) => { top: number; height: number };
   onScheduleClick?: (schedule: Schedule) => void;
   onKeyboardMoveStart?: (schedule: Schedule) => void;
@@ -46,6 +48,7 @@ export const DroppableColumn = memo(function DroppableColumn({
   schedules,
   clientsMap,
   driversMap,
+  vehiclesMap,
   calculateSchedulePosition,
   onScheduleClick,
   onKeyboardMoveStart,
@@ -127,6 +130,9 @@ export const DroppableColumn = memo(function DroppableColumn({
         const driverName = schedule.driverId
           ? driversMap.get(schedule.driverId)?.name
           : undefined;
+        const vehicleName = schedule.vehicleId
+          ? vehiclesMap.get(schedule.vehicleId)?.licensePlate
+          : undefined;
         const isConflicting = conflictIds.has(schedule.id);
         
         // レイアウト情報を取得（重なりを考慮した横位置）
@@ -139,6 +145,7 @@ export const DroppableColumn = memo(function DroppableColumn({
             schedule={schedule}
             clientName={clientName}
             driverName={driverName}
+            vehicleName={vehicleName}
             top={top}
             height={height}
             onClick={() => onScheduleClick?.(schedule)}

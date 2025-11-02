@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Calendar, Building2, User, Menu, X, Truck, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, Building2, User, Menu, X, Truck, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { VERSION_STRING, getVersionDescription } from "@/lib/version";
 
 export function Sidebar() {
@@ -27,6 +27,11 @@ export function Sidebar() {
       name: "車両",
       href: "/vehicles",
       icon: Truck,
+    },
+    {
+      name: "場所マスタ",
+      href: "/locations",
+      icon: MapPin,
     },
     {
       name: "クライアント",

@@ -2,6 +2,7 @@ import { getAllSchedules } from "@/lib/api/schedules";
 import { getAllClients } from "@/lib/api/clients";
 import { getAllDrivers } from "@/lib/api/drivers";
 import { getAllVehicles } from "@/lib/api/vehicles";
+import { getAllLocations } from "@/lib/api/locations";
 import { getToday } from "@/lib/utils/dateUtils";
 import { SchedulesClient } from "./SchedulesClient";
 
@@ -21,11 +22,12 @@ export default async function SchedulesPage() {
   const today = getToday();
 
   // 並行してデータを取得（全スケジュールを取得）
-  const [schedules, clients, drivers, vehicles] = await Promise.all([
+  const [schedules, clients, drivers, vehicles, locations] = await Promise.all([
     getAllSchedules(),
     getAllClients(),
     getAllDrivers(),
     getAllVehicles(),
+    getAllLocations(),
   ]);
 
   return (
@@ -35,6 +37,7 @@ export default async function SchedulesPage() {
         clients={clients}
         drivers={drivers}
         vehicles={vehicles}
+        locations={locations}
         initialStartDate={today}
       />
     </div>

@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import type { Schedule, ScheduleFormData } from "@/types/Schedule";
 import type { Client } from "@/types/Client";
 import type { Driver } from "@/types/Driver";
+import type { Vehicle } from "@/types/Vehicle";
+import type { Location } from "@/types/Location";
 import { formatDate, getToday } from "@/lib/utils/dateUtils";
 import { getCurrentTime, roundTime, minutesToTime, timeToMinutes } from "@/lib/utils/timeUtils";
 import {
@@ -24,15 +26,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-
-import type { Vehicle } from "@/types/Vehicle";
+// Separatorは不要なので削除
 
 interface ScheduleFormProps {
   schedule?: Schedule;
   clients: Client[];
   drivers: Driver[];
   vehicles?: Vehicle[];
+  locations?: Location[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: ScheduleFormData) => Promise<void>;
@@ -46,13 +47,14 @@ interface ScheduleFormProps {
 
 /**
  * ScheduleFormコンポーネント
- * スケジュールの登録・編集フォーム
+ * スケジュールの登録・編集フォーム（タブ式）
  */
 export function ScheduleForm({
   schedule,
   clients,
   drivers,
   vehicles = [],
+  locations = [],
   open,
   onOpenChange,
   onSubmit,
@@ -65,47 +67,60 @@ export function ScheduleForm({
 }: ScheduleFormProps) {
   const isEditMode = !!schedule;
 
-  // デフォルト値を計算（新規作成時のみ）
+  // デフォルト値を計算
   const defaultValues = useMemo(() => {
     if (schedule) {
       // 編集モードの場合は既存の値を使用
       return {
-        eventDate: schedule.eventDate,
-        startTime: schedule.startTime,
-        endTime: schedule.endTime,
-        title: schedule.title,
-        destinationAddress: schedule.destinationAddress,
-        content: schedule.content || "",
         clientId: schedule.clientId || "",
         driverId: schedule.driverId || "",
         vehicleId: schedule.vehicleId || "",
+        loadingDate: schedule.loadingDate,
+        loadingTime: schedule.loadingTime,
+        loadingLocationId: schedule.loadingLocationId || "",
+        loadingLocationName: schedule.loadingLocationName || "",
+        loadingAddress: schedule.loadingAddress || "",
+        deliveryDate: schedule.deliveryDate,
+        deliveryTime: schedule.deliveryTime,
+        deliveryLocationId: schedule.deliveryLocationId || "",
+        deliveryLocationName: schedule.deliveryLocationName || "",
+        deliveryAddress: schedule.deliveryAddress || "",
+        cargo: schedule.cargo || "",
+        billingDate: schedule.billingDate || "",
+        fare: schedule.fare ? String(schedule.fare) : "",
       };
     }
 
     // 新規作成モードの場合はデフォルト値を計算
     const today = initialDate || formatDate(getToday());
     const currentTime = getCurrentTime();
-    const roundedStartTime = initialStartTime || roundTime(currentTime, 15); // 15分単位で丸める
+    const roundedStartTime = initialStartTime || roundTime(currentTime, 15);
     const startMinutes = timeToMinutes(roundedStartTime);
-    const endMinutes = startMinutes + 60; // 開始時間 + 1時間
+    const endMinutes = startMinutes + 60;
     const defaultEndTime = initialEndTime || minutesToTime(endMinutes);
 
     return {
-      eventDate: today,
-      startTime: roundedStartTime,
-      endTime: defaultEndTime,
-      title: "",
-      destinationAddress: "",
-      content: "",
       clientId: "",
       driverId: initialDriverId || "",
       vehicleId: initialVehicleId || "",
+      loadingDate: today,
+      loadingTime: roundedStartTime,
+      loadingLocationId: "",
+      loadingLocationName: "",
+      loadingAddress: "",
+      deliveryDate: today,
+      deliveryTime: defaultEndTime,
+      deliveryLocationId: "",
+      deliveryLocationName: "",
+      deliveryAddress: "",
+      cargo: "",
+      billingDate: "",
+      fare: "",
     };
-  }, [schedule, initialDate, initialStartTime, initialEndTime]);
+  }, [schedule, initialDate, initialStartTime, initialEndTime, initialDriverId, initialVehicleId]);
 
   // フォーム状態
   const [formData, setFormData] = useState<ScheduleFormData>(defaultValues);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -114,41 +129,76 @@ export function ScheduleForm({
     setFormData(defaultValues);
   }, [defaultValues]);
 
+  // 場所選択時のハンドラー（積み地）
+  const handleLoadingLocationChange = (locationId: string) => {
+    const location = locations.find((loc) => loc.id === locationId);
+    if (location) {
+      setFormData({
+        ...formData,
+        loadingLocationId: locationId,
+        loadingLocationName: location.name,
+        loadingAddress: location.address,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        loadingLocationId: "",
+      });
+    }
+  };
+
+  // 場所選択時のハンドラー（着地）
+  const handleDeliveryLocationChange = (locationId: string) => {
+    const location = locations.find((loc) => loc.id === locationId);
+    if (location) {
+      setFormData({
+        ...formData,
+        deliveryLocationId: locationId,
+        deliveryLocationName: location.name,
+        deliveryAddress: location.address,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        deliveryLocationId: "",
+      });
+    }
+  };
+
   // バリデーション関数
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     // 必須フィールドのチェック
-    if (!formData.eventDate) {
-      newErrors.eventDate = "日付を入力してください";
+    if (!formData.loadingDate) {
+      newErrors.loadingDate = "積日を入力してください";
     }
 
-    if (!formData.startTime) {
-      newErrors.startTime = "開始時間を入力してください";
+    if (!formData.loadingTime) {
+      newErrors.loadingTime = "積時間を入力してください";
     }
 
-    if (!formData.endTime) {
-      newErrors.endTime = "終了時間を入力してください";
+    if (!formData.deliveryDate) {
+      newErrors.deliveryDate = "着日を入力してください";
     }
 
-    if (!formData.title.trim()) {
-      newErrors.title = "タイトルを入力してください";
+    if (!formData.deliveryTime) {
+      newErrors.deliveryTime = "着時間を入力してください";
     }
 
-    if (!formData.destinationAddress.trim()) {
-      newErrors.destinationAddress = "届け先住所を入力してください";
-    }
-
-    // 時間の妥当性チェック（開始時間 < 終了時間）
-    if (formData.startTime && formData.endTime) {
-      const [startHour, startMin] = formData.startTime.split(":").map(Number);
-      const [endHour, endMin] = formData.endTime.split(":").map(Number);
-      const startMinutes = startHour * 60 + startMin;
-      const endMinutes = endHour * 60 + endMin;
-
-      if (startMinutes >= endMinutes) {
-        newErrors.endTime = "終了時間は開始時間より後にしてください";
+    // 日付の論理チェック（着日 >= 積日）
+    if (formData.loadingDate && formData.deliveryDate) {
+      const loadingDate = new Date(formData.loadingDate);
+      const deliveryDate = new Date(formData.deliveryDate);
+      
+      if (deliveryDate < loadingDate) {
+        newErrors.deliveryDate = "着日は積日以降の日付を指定してください";
       }
+    }
+
+    // 運賃の数値チェック
+    if (formData.fare && isNaN(Number(formData.fare))) {
+      newErrors.fare = "運賃は数値で入力してください";
     }
 
     setErrors(newErrors);
@@ -168,25 +218,6 @@ export function ScheduleForm({
     try {
       await onSubmit(formData);
       onOpenChange(false);
-      // フォームをリセット（デフォルト値を再計算）
-      const today = formatDate(getToday());
-      const currentTime = getCurrentTime();
-      const roundedStartTime = roundTime(currentTime, 15);
-      const startMinutes = timeToMinutes(roundedStartTime);
-      const endMinutes = startMinutes + 60;
-      const defaultEndTime = minutesToTime(endMinutes);
-      
-      setFormData({
-        eventDate: today,
-        startTime: roundedStartTime,
-        endTime: defaultEndTime,
-        title: "",
-        destinationAddress: "",
-        content: "",
-        clientId: "",
-        driverId: "",
-        vehicleId: "",
-      });
       setErrors({});
     } catch (error) {
       // エラーは親コンポーネントで処理される
@@ -216,7 +247,7 @@ export function ScheduleForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditMode ? "スケジュール編集" : "スケジュール登録"}
@@ -228,209 +259,355 @@ export function ScheduleForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* 日付 */}
-          <div className="space-y-2">
-            <Label htmlFor="eventDate">
-              日付 <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="eventDate"
-              type="date"
-              value={formData.eventDate}
-              onChange={(e) =>
-                setFormData({ ...formData, eventDate: e.target.value })
-              }
-              required
-            />
-            {errors.eventDate && (
-              <p className="text-sm text-destructive">{errors.eventDate}</p>
-            )}
-          </div>
-
-          {/* 開始時間 */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startTime">
-                開始時間 <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="startTime"
-                type="time"
-                value={formData.startTime}
-                onChange={(e) =>
-                  setFormData({ ...formData, startTime: e.target.value })
-                }
-                required
-              />
-              {errors.startTime && (
-                <p className="text-sm text-destructive">{errors.startTime}</p>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* 1行目: クライアント、ドライバー、車両 */}
+          <div className="grid grid-cols-3 gap-3">
+            {/* クライアント */}
+            <div className="space-y-1.5">
+              <Label htmlFor="clientId" className="text-xs">クライアント</Label>
+              {clients.length === 0 ? (
+                <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded text-center">
+                  未登録
+                </div>
+              ) : (
+                <Select
+                  value={formData.clientId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, clientId: value })
+                  }
+                >
+                  <SelectTrigger id="clientId" className="h-9">
+                    <SelectValue placeholder="選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             </div>
 
-            {/* 終了時間 */}
-            <div className="space-y-2">
-              <Label htmlFor="endTime">
-                終了時間 <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="endTime"
-                type="time"
-                value={formData.endTime}
-                onChange={(e) =>
-                  setFormData({ ...formData, endTime: e.target.value })
-                }
-                required
-              />
-              {errors.endTime && (
-                <p className="text-sm text-destructive">{errors.endTime}</p>
+            {/* ドライバー */}
+            <div className="space-y-1.5">
+              <Label htmlFor="driverId" className="text-xs">ドライバー</Label>
+              {drivers.length === 0 ? (
+                <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded text-center">
+                  未登録
+                </div>
+              ) : (
+                <Select
+                  value={formData.driverId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, driverId: value })
+                  }
+                >
+                  <SelectTrigger id="driverId" className="h-9">
+                    <SelectValue placeholder="選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {drivers.map((driver) => (
+                      <SelectItem key={driver.id} value={driver.id}>
+                        {driver.name}
+                        {!driver.isInHouse && " (協力)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* 車両 */}
+            <div className="space-y-1.5">
+              <Label htmlFor="vehicleId" className="text-xs">車両</Label>
+              {vehicles.length === 0 ? (
+                <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded text-center">
+                  未登録
+                </div>
+              ) : (
+                <Select
+                  value={formData.vehicleId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, vehicleId: value })
+                  }
+                >
+                  <SelectTrigger id="vehicleId" className="h-9">
+                    <SelectValue placeholder="選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vehicles.map((vehicle) => (
+                      <SelectItem key={vehicle.id} value={vehicle.id}>
+                        {vehicle.name} ({vehicle.licensePlate})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             </div>
           </div>
 
-          {/* タイトル */}
-          <div className="space-y-2">
-            <Label htmlFor="title">
-              タイトル <span className="text-destructive">*</span>
-            </Label>
+          {/* 2行目: 荷物 */}
+          <div className="space-y-1.5">
+            <Label htmlFor="cargo" className="text-xs">荷物</Label>
             <Input
-              id="title"
-              value={formData.title}
+              id="cargo"
+              value={formData.cargo}
               onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
+                setFormData({ ...formData, cargo: e.target.value })
               }
-              placeholder="配送内容を入力"
-              required
-            />
-            {errors.title && (
-              <p className="text-sm text-destructive">{errors.title}</p>
-            )}
-          </div>
-
-          {/* 届け先住所 */}
-          <div className="space-y-2">
-            <Label htmlFor="destinationAddress">
-              届け先住所 <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="destinationAddress"
-              value={formData.destinationAddress}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  destinationAddress: e.target.value,
-                })
-              }
-              placeholder="配送先の住所を入力"
-              required
-            />
-            {errors.destinationAddress && (
-              <p className="text-sm text-destructive">
-                {errors.destinationAddress}
-              </p>
-            )}
-          </div>
-
-          {/* 詳細内容 */}
-          <div className="space-y-2">
-            <Label htmlFor="content">詳細内容</Label>
-            <Textarea
-              id="content"
-              value={formData.content}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                setFormData({ ...formData, content: e.target.value })
-              }
-              placeholder="配送の詳細情報を入力（任意）"
-              rows={3}
+              placeholder="荷物の内容"
+              className="h-9"
             />
           </div>
 
-          {/* クライアント */}
+          {/* 積み地セクション */}
           <div className="space-y-2">
-            <Label htmlFor="clientId">クライアント</Label>
-            {clients.length === 0 ? (
-              <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-md">
-                クライアントが登録されていません。先にクライアントを登録してください。
+            <h3 className="text-xs font-semibold text-muted-foreground">
+              積み地情報
+            </h3>
+            
+            {/* 積日時 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="loadingDate" className="text-xs">
+                  積日 <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="loadingDate"
+                  type="date"
+                  value={formData.loadingDate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, loadingDate: e.target.value })
+                  }
+                  required
+                  className="h-9"
+                />
+                {errors.loadingDate && (
+                  <p className="text-xs text-destructive">{errors.loadingDate}</p>
+                )}
               </div>
-            ) : (
-              <Select
-                value={formData.clientId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, clientId: value })
-                }
-              >
-                <SelectTrigger id="clientId">
-                  <SelectValue placeholder="クライアントを選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="loadingTime" className="text-xs">
+                  積時間 <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="loadingTime"
+                  type="time"
+                  value={formData.loadingTime}
+                  onChange={(e) =>
+                    setFormData({ ...formData, loadingTime: e.target.value })
+                  }
+                  required
+                  className="h-9"
+                />
+                {errors.loadingTime && (
+                  <p className="text-xs text-destructive">{errors.loadingTime}</p>
+                )}
+              </div>
+            </div>
+
+            {/* 積地場所・名前・住所 */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="loadingLocationId" className="text-xs">積地選択</Label>
+                {locations.length === 0 ? (
+                  <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded text-center">
+                    未登録
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.loadingLocationId}
+                    onValueChange={handleLoadingLocationChange}
+                  >
+                    <SelectTrigger id="loadingLocationId" className="h-9">
+                      <SelectValue placeholder="選択" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map((location) => (
+                        <SelectItem key={location.id} value={location.id}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="loadingLocationName" className="text-xs">積地名</Label>
+                <Input
+                  id="loadingLocationName"
+                  value={formData.loadingLocationName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, loadingLocationName: e.target.value })
+                  }
+                  placeholder="積地名"
+                  className="h-9"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="loadingAddress" className="text-xs">積地住所</Label>
+                <Input
+                  id="loadingAddress"
+                  value={formData.loadingAddress}
+                  onChange={(e) =>
+                    setFormData({ ...formData, loadingAddress: e.target.value })
+                  }
+                  placeholder="積地住所"
+                  className="h-9"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* ドライバー */}
+          {/* 着地セクション */}
           <div className="space-y-2">
-            <Label htmlFor="driverId">ドライバー</Label>
-            {drivers.length === 0 ? (
-              <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-md">
-                ドライバーが登録されていません。先にドライバーを登録してください。
+            <h3 className="text-xs font-semibold text-muted-foreground">
+              着地情報
+            </h3>
+            
+            {/* 着日時 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="deliveryDate" className="text-xs">
+                  着日 <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="deliveryDate"
+                  type="date"
+                  value={formData.deliveryDate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, deliveryDate: e.target.value })
+                  }
+                  required
+                  className="h-9"
+                />
+                {errors.deliveryDate && (
+                  <p className="text-xs text-destructive">{errors.deliveryDate}</p>
+                )}
               </div>
-            ) : (
-              <Select
-                value={formData.driverId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, driverId: value })
-                }
-              >
-                <SelectTrigger id="driverId">
-                  <SelectValue placeholder="ドライバーを選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {drivers.map((driver) => (
-                    <SelectItem key={driver.id} value={driver.id}>
-                      {driver.name}
-                      {!driver.isInHouse && " (協力会社)"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="deliveryTime" className="text-xs">
+                  着時間 <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="deliveryTime"
+                  type="time"
+                  value={formData.deliveryTime}
+                  onChange={(e) =>
+                    setFormData({ ...formData, deliveryTime: e.target.value })
+                  }
+                  required
+                  className="h-9"
+                />
+                {errors.deliveryTime && (
+                  <p className="text-xs text-destructive">{errors.deliveryTime}</p>
+                )}
+              </div>
+            </div>
+
+            {/* 着地場所・名前・住所 */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="deliveryLocationId" className="text-xs">着地選択</Label>
+                {locations.length === 0 ? (
+                  <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded text-center">
+                    未登録
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.deliveryLocationId}
+                    onValueChange={handleDeliveryLocationChange}
+                  >
+                    <SelectTrigger id="deliveryLocationId" className="h-9">
+                      <SelectValue placeholder="選択" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map((location) => (
+                        <SelectItem key={location.id} value={location.id}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="deliveryLocationName" className="text-xs">着地名</Label>
+                <Input
+                  id="deliveryLocationName"
+                  value={formData.deliveryLocationName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, deliveryLocationName: e.target.value })
+                  }
+                  placeholder="着地名"
+                  className="h-9"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="deliveryAddress" className="text-xs">着地住所</Label>
+                <Input
+                  id="deliveryAddress"
+                  value={formData.deliveryAddress}
+                  onChange={(e) =>
+                    setFormData({ ...formData, deliveryAddress: e.target.value })
+                  }
+                  placeholder="着地住所"
+                  className="h-9"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* 車両 */}
+          {/* 請求情報セクション */}
           <div className="space-y-2">
-            <Label htmlFor="vehicleId">車両</Label>
-            {vehicles.length === 0 ? (
-              <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-md">
-                車両が登録されていません。先に車両を登録してください。
+            <h3 className="text-xs font-semibold text-muted-foreground">
+              請求情報
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="billingDate" className="text-xs">請求日</Label>
+                <Input
+                  id="billingDate"
+                  type="date"
+                  value={formData.billingDate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, billingDate: e.target.value })
+                  }
+                  className="h-9"
+                />
               </div>
-            ) : (
-              <Select
-                value={formData.vehicleId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, vehicleId: value })
-                }
-              >
-                <SelectTrigger id="vehicleId">
-                  <SelectValue placeholder="車両を選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.name} ({vehicle.licensePlate})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="fare" className="text-xs">運賃（円）</Label>
+                <Input
+                  id="fare"
+                  type="number"
+                  value={formData.fare}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fare: e.target.value })
+                  }
+                  placeholder="運賃"
+                  className="h-9"
+                />
+                {errors.fare && (
+                  <p className="text-xs text-destructive">{errors.fare}</p>
+                )}
+              </div>
+            </div>
           </div>
 
-          <DialogFooter className="gap-2">
+
+
+          <DialogFooter className="gap-2 mt-6">
             {isEditMode && onDelete && (
               <Button
                 type="button"

@@ -14,6 +14,7 @@ import {
 import type { Schedule } from "@/types/Schedule";
 import type { Client } from "@/types/Client";
 import type { Driver } from "@/types/Driver";
+import type { Vehicle } from "@/types/Vehicle";
 import { generateDateRange, formatDateShort, getWeekdayJa, formatDate } from "@/lib/utils/dateUtils";
 import { generateTimeSlots, timeToMinutes } from "@/lib/utils/timeUtils";
 import { throttle } from "@/lib/utils/performanceUtils";
@@ -30,6 +31,7 @@ interface TimelineCalendarProps {
   schedules: Schedule[];
   clients: Client[];
   drivers: Driver[];
+  vehicles: Vehicle[];
   startDate: Date;
   endDate: Date;
   onScheduleClick?: (schedule: Schedule) => void;
@@ -54,6 +56,7 @@ export function TimelineCalendar({
   schedules,
   clients,
   drivers,
+  vehicles,
   startDate,
   endDate,
   onScheduleClick,
@@ -249,7 +252,7 @@ export function TimelineCalendar({
   // 時間軸を生成（0:00-24:00、1時間刻み）
   const timeSlots = useMemo(() => generateTimeSlots(0, 24, 60), []);
 
-  // クライアントとドライバーのマップを作成（高速検索用）
+  // クライアント、ドライバー、車両のマップを作成（高速検索用）
   const clientsMap = useMemo(() => {
     const map = new Map<string, Client>();
     clients.forEach((client) => map.set(client.id, client));
@@ -261,6 +264,12 @@ export function TimelineCalendar({
     drivers.forEach((driver) => map.set(driver.id, driver));
     return map;
   }, [drivers]);
+
+  const vehiclesMap = useMemo(() => {
+    const map = new Map<string, Vehicle>();
+    vehicles.forEach((vehicle) => map.set(vehicle.id, vehicle));
+    return map;
+  }, [vehicles]);
 
   // 日付ごとにスケジュールをグループ化（楽観的更新を使用）
   const schedulesByDate = useMemo(() => {
@@ -1056,6 +1065,7 @@ export function TimelineCalendar({
                     schedules={daySchedules}
                     clientsMap={clientsMap}
                     driversMap={driversMap}
+                    vehiclesMap={vehiclesMap}
                     calculateSchedulePosition={calculateSchedulePosition}
                     onScheduleClick={onScheduleClick}
                     onKeyboardMoveStart={handleKeyboardMoveStart}
@@ -1082,6 +1092,7 @@ export function TimelineCalendar({
               schedule={activeSchedule}
               clientName={activeSchedule.clientId ? clientsMap.get(activeSchedule.clientId)?.name : undefined}
               driverName={activeSchedule.driverId ? driversMap.get(activeSchedule.driverId)?.name : undefined}
+              vehicleName={activeSchedule.vehicleId ? vehiclesMap.get(activeSchedule.vehicleId)?.licensePlate : undefined}
             />
           </div>
         ) : null}
