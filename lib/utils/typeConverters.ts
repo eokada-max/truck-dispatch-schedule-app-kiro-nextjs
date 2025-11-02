@@ -70,30 +70,23 @@ export function toScheduleInsert(
 ): Database["public"]["Tables"]["schedules_kiro_nextjs"]["Insert"] {
   // datetime-local形式（YYYY-MM-DDTHH:mm）からPostgreSQL TIMESTAMP形式に変換
   // タイムゾーン変換を避けるため、単純に秒を追加するだけ
-  let loadingDatetime: string;
-  let deliveryDatetime: string;
-  
-  if (input.loadingDatetime && input.deliveryDatetime) {
-    // 新形式：datetime-local (YYYY-MM-DDTHH:mm) → YYYY-MM-DDTHH:mm:ss
-    // 既に秒が含まれている場合は追加しない
-    loadingDatetime = input.loadingDatetime.includes(':00:00') 
-      ? input.loadingDatetime.replace(':00:00', ':00')  // 重複を修正
-      : input.loadingDatetime.length === 16 
-        ? `${input.loadingDatetime}:00`  // YYYY-MM-DDTHH:mm形式
-        : input.loadingDatetime;  // 既に秒が含まれている
-    
-    deliveryDatetime = input.deliveryDatetime.includes(':00:00')
-      ? input.deliveryDatetime.replace(':00:00', ':00')  // 重複を修正
-      : input.deliveryDatetime.length === 16
-        ? `${input.deliveryDatetime}:00`  // YYYY-MM-DDTHH:mm形式
-        : input.deliveryDatetime;  // 既に秒が含まれている
-  } else if (input.loadingDate && input.loadingTime && input.deliveryDate && input.deliveryTime) {
-    // 旧形式：date + time（後方互換性のため）
-    loadingDatetime = `${input.loadingDate}T${input.loadingTime}:00`;
-    deliveryDatetime = `${input.deliveryDate}T${input.deliveryTime}:00`;
-  } else {
+  if (!input.loadingDatetime || !input.deliveryDatetime) {
     throw new Error('積日時と着日時は必須です');
   }
+  
+  // 新形式：datetime-local (YYYY-MM-DDTHH:mm) → YYYY-MM-DDTHH:mm:ss
+  // 既に秒が含まれている場合は追加しない
+  const loadingDatetime = input.loadingDatetime.includes(':00:00') 
+    ? input.loadingDatetime.replace(':00:00', ':00')  // 重複を修正
+    : input.loadingDatetime.length === 16 
+      ? `${input.loadingDatetime}:00`  // YYYY-MM-DDTHH:mm形式
+      : input.loadingDatetime;  // 既に秒が含まれている
+  
+  const deliveryDatetime = input.deliveryDatetime.includes(':00:00')
+    ? input.deliveryDatetime.replace(':00:00', ':00')  // 重複を修正
+    : input.deliveryDatetime.length === 16
+      ? `${input.deliveryDatetime}:00`  // YYYY-MM-DDTHH:mm形式
+      : input.deliveryDatetime;  // 既に秒が含まれている
   
   console.log('📝 toScheduleInsert:', {
     input: {

@@ -1,80 +1,54 @@
-# データベーススキーマ完全移行 TODO
+# データベーススキーマ完全移行 - ✅ 完了
 
-## ⚠️ 重要：不要なカラムの削除が必要
+**完了日**: 2024-11-02
 
-### 削除対象カラム
-以下のカラムは`loading_datetime` / `delivery_datetime`があれば不要：
-- `loading_date`
-- `loading_time`
-- `delivery_date`
-- `delivery_time`
+## ✅ 完了：不要なカラムの削除
 
-## 必要な作業
+### 削除済みカラム
+以下のカラムは`loading_datetime` / `delivery_datetime`に統合され、削除されました：
+- ✅ `loading_date`
+- ✅ `loading_time`
+- ✅ `delivery_date`
+- ✅ `delivery_time`
 
-### 1. コードの修正
+## 完了した作業
+
+### 1. コードの修正 ✅
 
 #### ✅ 完了
 - ScheduleCard: `loadingDatetime`から時間を抽出するように修正済み
 - API関数: フィルタリングを`loading_datetime`ベースに変更済み
+- **lib/api/schedules.ts**: すべてのSELECT句から旧カラムを削除済み
+- **ScheduleForm**: `datetime-local`入力に更新済み
+- **typeConverters.ts**: 旧形式の後方互換性コードを削除済み
 
-#### ⚠️ 未完了
-- **lib/api/schedules.ts**: すべてのSELECT句から以下を削除
-  ```sql
-  loading_date,
-  loading_time,
-  delivery_date,
-  delivery_time,
-  ```
-  
-  対象箇所：
-  - `getSchedulesByDateRange` (行20-50)
-  - `getSchedulesByDate` (行60-100)
-  - `getSchedulesByDriver` (行110-150)
-  - `getAllSchedules` (行250-290)
+### 2. 型定義の修正 ✅
 
-### 2. 型定義の修正
+#### database.ts ✅
+`schedules_kiro_nextjs`のRow/Insert/Update型から削除済み
 
-#### database.ts
-`schedules_kiro_nextjs`のRow/Insert/Update型から削除：
+#### types/Schedule.ts ✅
+`Schedule`型から削除済み
+
+### 3. typeConverters.tsの修正 ✅
+
+#### toSchedule関数 ✅
+後方互換性フィールドの計算を削除済み
+
+#### toScheduleInsert関数 ✅
+旧形式（date + time）の後方互換性コードを削除済み：
 ```typescript
-loading_date: string | null;
-loading_time: string | null;
-delivery_date: string | null;
-delivery_time: string | null;
+// 削除済み
+} else if (input.loadingDate && input.loadingTime && input.deliveryDate && input.deliveryTime) {
+  // 旧形式：date + time（後方互換性のため）
+  loadingDatetime = `${input.loadingDate}T${input.loadingTime}:00`;
+  deliveryDatetime = `${input.deliveryDate}T${input.deliveryTime}:00`;
+}
 ```
 
-#### types/Schedule.ts
-`Schedule`型から削除：
-```typescript
-loadingDate: string | null;
-loadingTime: string | null;
-deliveryDate: string | null;
-deliveryTime: string | null;
-```
+### 4. データベースからカラムを削除 ✅
 
-### 3. typeConverters.tsの修正
-
-#### toSchedule関数
-後方互換性フィールドの計算を削除：
-```typescript
-// 削除
-const loadingDate = row.loading_date || ...
-const loadingTime = row.loading_time || ...
-```
-
-#### toScheduleInsert関数
-後方互換性フィールドの書き込みを削除：
-```typescript
-// 削除
-loading_date: loadingDate,
-loading_time: loadingTime,
-delivery_date: deliveryDate,
-delivery_time: deliveryTime,
-```
-
-### 4. データベースからカラムを削除
-
-Supabase SQL Editorで実行：
+Supabase SQL Editorで実行済み：
 ```sql
 ALTER TABLE schedules_kiro_nextjs
   DROP COLUMN IF EXISTS loading_date,
@@ -83,39 +57,22 @@ ALTER TABLE schedules_kiro_nextjs
   DROP COLUMN IF EXISTS delivery_time;
 ```
 
-## ⚠️ 重要な注意事項
+**実行日**: datetime-cleanupスペックで完了
 
-### 現在の状況
-- **データベース**: `loading_datetime` / `delivery_datetime` (TIMESTAMPTZ, NOT NULL)
-- **ScheduleForm**: まだ古い形式 (`loadingDate` + `loadingTime`) を使用中
-- **typeConverters**: 旧形式から新形式への変換をサポート（一時的な対応）
+## ✅ 完了した対応
 
-### 問題点
-ScheduleFormが古い形式（日付と時間を別々の入力フィールド）を使用しているため、以下の問題があります：
+### 最終状況
+- ✅ **データベース**: `loading_datetime` / `delivery_datetime` (TIMESTAMPTZ, NOT NULL)
+- ✅ **ScheduleForm**: `datetime-local`入力に更新済み
+- ✅ **typeConverters**: 旧形式の後方互換性コードを削除済み
+- ✅ **型定義**: 旧フィールドを削除済み
 
-1. UIが統合されていない（日付と時間が別々）
-2. `toScheduleInsert`関数で旧形式→新形式の変換が必要
-3. コードの一貫性がない
+### 実施した対応
 
-### 必要な対応
+#### 1. ScheduleFormの更新 ✅
+フィールドを統合しました：
 
-#### 1. ScheduleFormの更新
-以下のフィールドを統合する必要があります：
-
-**変更前（現在）:**
-```tsx
-// 積日
-<Input type="date" value={formData.loadingDate} />
-// 積時間
-<Input type="time" value={formData.loadingTime} />
-
-// 着日
-<Input type="date" value={formData.deliveryDate} />
-// 着時間
-<Input type="time" value={formData.deliveryTime} />
-```
-
-**変更後（目標）:**
+**変更後（現在）:**
 ```tsx
 // 積日時
 <Input type="datetime-local" value={formData.loadingDatetime} />
@@ -124,8 +81,8 @@ ScheduleFormが古い形式（日付と時間を別々の入力フィールド�
 <Input type="datetime-local" value={formData.deliveryDatetime} />
 ```
 
-#### 2. ScheduleFormDataの型定義
-`types/Schedule.ts`の`ScheduleFormData`は既に新形式に対応済み：
+#### 2. ScheduleFormDataの型定義 ✅
+`types/Schedule.ts`の`ScheduleFormData`は新形式に対応済み：
 ```typescript
 export interface ScheduleFormData {
   loadingDatetime: string; // datetime-local format (YYYY-MM-DDTHH:mm)
@@ -134,39 +91,30 @@ export interface ScheduleFormData {
 }
 ```
 
-#### 3. バリデーション
-`validateForm`関数も更新が必要：
-- `loadingDate` / `loadingTime` → `loadingDatetime`
-- `deliveryDate` / `deliveryTime` → `deliveryDatetime`
+#### 3. バリデーション ✅
+`validateForm`関数を更新済み：
+- `loadingDatetime`と`deliveryDatetime`を使用
+- 日時の論理チェック（着日時 >= 積日時）を実装
 
-#### 4. デフォルト値の計算
-`useMemo`でのデフォルト値計算も更新が必要：
+#### 4. デフォルト値の計算 ✅
+`useMemo`でのデフォルト値計算を更新済み：
 ```typescript
-// 変更前
-loadingDate: today,
-loadingTime: roundedStartTime,
-
-// 変更後
-loadingDatetime: `${today}T${roundedStartTime}`,
+// 現在の実装
+const loadingDatetime = `${today}T${roundedStartTime}`;
+const deliveryDatetime = `${today}T${defaultEndTime}`;
 ```
 
-### 一時的な対応（現在の実装）
-`lib/utils/typeConverters.ts`の`toScheduleInsert`関数で、旧形式をサポート：
-```typescript
-if (input.loadingDate && input.loadingTime && input.deliveryDate && input.deliveryTime) {
-  // 旧形式：date + time
-  loadingDatetime = new Date(`${input.loadingDate}T${input.loadingTime}`).toISOString();
-  deliveryDatetime = new Date(`${input.deliveryDate}T${input.deliveryTime}`).toISOString();
-}
-```
+#### 5. 一時的な対応の削除 ✅
+`lib/utils/typeConverters.ts`の`toScheduleInsert`関数から旧形式サポートを削除しました。
 
-**この一時対応は、ScheduleFormを更新したら削除すること！**
-
-### 優先度
-- **高**: ScheduleFormの更新は必須
-- **理由**: データベーススキーマとUIの一貫性を保つため
-- **影響**: 現在は動作するが、コードの保守性が低い
+### 成果
+- ✅ コードの一貫性が向上
+- ✅ 保守性が向上
+- ✅ 技術的負債を解消
+- ✅ データベーススキーマとUIが完全に統一
 
 ### 参考
 - データベーススキーマ: `supabase/migrations/change_to_datetime_fields.sql`
 - マイグレーションガイド: `supabase/DATETIME_MIGRATION_GUIDE.md`
+- datetime-ui-migrationスペック: `.kiro/specs/datetime-ui-migration/`
+- datetime-cleanupスペック: `.kiro/specs/datetime-cleanup/`

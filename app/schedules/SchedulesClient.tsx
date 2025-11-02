@@ -359,9 +359,9 @@ export function SchedulesClient({
   };
 
   return (
-    <>
-      {/* ツールバー */}
-      <div className="border-b bg-card">
+    <div className="flex flex-col h-full">
+      {/* ツールバー（固定表示） */}
+      <div className="flex-shrink-0 border-b bg-card shadow-sm">
         <div className="container mx-auto px-4 py-3 md:py-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4 justify-between">
             <DateNavigation
@@ -393,7 +393,7 @@ export function SchedulesClient({
       </div>
 
       {/* メインコンテンツ */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="flex-1 overflow-auto container mx-auto px-4 py-6">
         <Suspense fallback={
           <div className="space-y-4">
             <div className="h-8 bg-muted rounded animate-pulse" />
@@ -433,6 +433,6 @@ export function SchedulesClient({
           />
         </Suspense>
       )}
-    </>
+    </div>
   );
 }

@@ -41,7 +41,7 @@ export default function RootLayout({
       <body className={`${inter.className} ${inter.variable}`}>
         <div className="min-h-screen bg-background flex flex-col md:flex-row">
           <Sidebar />
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1">
             {children}
           </main>
         </div>

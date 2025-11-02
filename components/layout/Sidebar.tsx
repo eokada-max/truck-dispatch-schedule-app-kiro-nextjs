@@ -49,9 +49,9 @@ export function Sidebar() {
 
   return (
     <>
-      {/* デスクトップサイドバー */}
+      {/* デスクトップサイドバー（固定表示） */}
       <aside
-        className={`hidden md:flex flex-col bg-card border-r transition-all duration-300 ${
+        className={`hidden md:flex flex-col bg-card border-r transition-all duration-300 sticky top-0 h-screen ${
           isCollapsed ? "w-16" : "w-64"
         }`}
       >
@@ -79,6 +79,23 @@ export function Sidebar() {
           </div>
         </div>
 
+        {/* 折りたたみボタン */}
+        <div className="p-3 border-b">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`w-full ${isCollapsed ? 'justify-center px-2' : 'justify-start'}`}
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            title={isCollapsed ? '展開する' : '折りたたむ'}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronLeft className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+
         {/* ナビゲーション */}
         <nav className="flex-1 p-3 overflow-y-auto">
           <div className="space-y-1">
@@ -104,24 +121,6 @@ export function Sidebar() {
           </div>
         </nav>
 
-        {/* フッター（折りたたみボタン） */}
-        <div className="p-3 border-t">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <>
-                <ChevronLeft className="w-4 h-4" />
-                <span className="ml-2">折りたたむ</span>
-              </>
-            )}
-          </Button>
-        </div>
       </aside>
 
       {/* モバイルヘッダー */}
