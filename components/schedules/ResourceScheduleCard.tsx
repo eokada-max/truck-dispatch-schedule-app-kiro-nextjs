@@ -2,7 +2,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import type { Schedule } from "@/types/Schedule";
-import { Clock, MapPin, Building2, User, Truck } from "lucide-react";
+import { Clock } from "lucide-react";
 import { calculateSchedulePosition } from "@/lib/utils/timeAxisUtils";
 
 interface ResourceScheduleCardProps {
@@ -30,15 +30,11 @@ export function ResourceScheduleCard({
   const resourceId = viewType === "vehicle" ? schedule.vehicleId : schedule.driverId;
   
   // loadingDatetimeから日付と時間を抽出
-  if (!schedule.loadingDatetime || !schedule.deliveryDatetime) {
-    return null;
-  }
+  const eventDate = schedule.loadingDatetime?.split('T')[0] || '';
+  const startTime = schedule.loadingDatetime?.split('T')[1]?.slice(0, 5) || '00:00'; // HH:mm
+  const endTime = schedule.deliveryDatetime?.split('T')[1]?.slice(0, 5) || '00:00'; // HH:mm
   
-  const eventDate = schedule.loadingDatetime.split('T')[0];
-  const startTime = schedule.loadingDatetime.split('T')[1].slice(0, 5); // HH:mm
-  const endTime = schedule.deliveryDatetime.split('T')[1].slice(0, 5); // HH:mm
-  
-  const { attributes, listeners, setNodeRef, isDragging, transform } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `schedule-${schedule.id}`,
     data: {
       schedule,
@@ -46,6 +42,11 @@ export function ResourceScheduleCard({
       sourceDate: eventDate,
     },
   });
+  
+  // loadingDatetimeまたはdeliveryDatetimeがない場合は表示しない
+  if (!schedule.loadingDatetime || !schedule.deliveryDatetime) {
+    return null;
+  }
 
   // 時間軸上の位置とサイズを計算
   const position = calculateSchedulePosition(startTime, endTime);
