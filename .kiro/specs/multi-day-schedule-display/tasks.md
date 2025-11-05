@@ -10,7 +10,9 @@
   - `calculateContinuationPosition()`関数を実装：継続インジケーターの位置を計算
   - _要件: 1.1, 1.2, 2.1, 2.2, 3.1, 3.2_
 
-- [ ] 2. ScheduleCardコンポーネントの日付またぎ対応
+- [x] 2. ScheduleCardコンポーネントの日付またぎ対応
+
+
   - `components/schedules/ScheduleCard.tsx`を拡張
   - 日付またぎバッジ（「翌日」表示）を追加
   - 日付またぎスケジュールの視覚スタイル（破線ボーダー）を追加
@@ -18,7 +20,9 @@
   - `isMultiDay`と`segment`プロパティを追加
   - _要件: 1.1, 1.2, 1.3_
 
-- [ ] 3. 継続インジケーターコンポーネントの実装
+- [x] 3. 継続インジケーターコンポーネントの実装
+
+
   - `components/schedules/ContinuationIndicator.tsx`を作成
   - 着地日のセルに表示される継続インジケーターを実装
   - 元のスケジュールと同じ色・スタイルで表示
@@ -26,7 +30,9 @@
   - 「→ 継続」または「← 開始」のラベルを表示
   - _要件: 2.2, 2.3, 3.2, 3.3_
 
-- [ ] 4. Timeline Viewでの日付またぎ表示対応
+- [x] 4. Timeline Viewでの日付またぎ表示対応
+
+
   - `components/schedules/TimelineCalendar.tsx`を拡張
   - スケジュールを日付ごとにグループ化する際、`splitScheduleByDate()`を使用
   - 各日付列に関連するスケジュールセグメントを表示
@@ -34,14 +40,19 @@
   - 同一スケジュールの複数セグメントを視覚的に関連付け
   - _要件: 2.1, 2.2, 2.3_
 
-- [ ] 5. Resource Viewでの日付またぎ表示対応
+- [x] 5. Resource Viewでの日付またぎ表示対応
+
+
+
   - `components/schedules/ResourceCalendar.tsx`を拡張
   - リソース行の各日付セルにスケジュールセグメントを表示
   - 継続インジケーターを適切な位置に配置
   - 同一スケジュールの複数セグメントを視覚的に関連付け
   - _要件: 3.1, 3.2, 3.3_
 
-- [ ] 6. ResourceCellコンポーネントの日付またぎ対応
+- [x] 6. ResourceCellコンポーネントの日付またぎ対応
+
+
   - `components/schedules/ResourceCell.tsx`を拡張
   - セグメント情報に基づいてスケジュールカードまたは継続インジケーターを表示
   - 継続インジケーターを時間軸上の適切な位置に配置
