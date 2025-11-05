@@ -74,13 +74,16 @@ export const ContinuationIndicator = memo(function ContinuationIndicator({
     <div
       ref={setNodeRef}
       onClick={handleClick}
-      className="absolute bg-primary/5 border border-dashed border-primary/40 rounded text-xs transition-all hover:bg-primary/10 active:bg-primary/15 overflow-hidden"
+      className="absolute bg-primary/5 border border-dashed border-primary/40 rounded text-xs transition-all hover:bg-primary/10 active:bg-primary/15 overflow-hidden touch-none"
       style={{
         ...style,
+        top: '50%',
+        transform: `translateY(-50%) ${style.transform || ''}`,
         left: position.left,
         width: position.width,
         height: '32px',
         minWidth: '40px',
+        zIndex: 10,
       }}
       title={`${routeDisplay} (${label})`}
       {...listeners}
