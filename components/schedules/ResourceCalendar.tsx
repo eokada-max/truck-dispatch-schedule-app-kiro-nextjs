@@ -222,6 +222,7 @@ export function ResourceCalendar({
         const newEndTime = addMinutesToTime(newStartTime, duration);
         
         // 日付部分を保持して時間のみ更新
+        // 日付またぎスケジュールの場合、元の日付を保持
         const loadingDate = scheduleData.schedule.loadingDatetime.split('T')[0];
         const deliveryDate = scheduleData.schedule.deliveryDatetime.split('T')[0];
         

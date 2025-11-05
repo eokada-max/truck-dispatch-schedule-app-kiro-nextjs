@@ -1,6 +1,8 @@
 "use client";
 
 import { memo } from "react";
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import type { Schedule } from "@/types/Schedule";
 import type { ScheduleSegment } from "@/lib/utils/multiDayScheduleUtils";
 import { ArrowRight, ArrowLeft } from "lucide-react";
@@ -9,6 +11,7 @@ import { calculateSchedulePosition } from "@/lib/utils/timeAxisUtils";
 interface ContinuationIndicatorProps {
   schedule: Schedule;
   segment: ScheduleSegment;
+  resourceId?: string;
   onClick?: () => void;
 }
 
@@ -16,12 +19,30 @@ interface ContinuationIndicatorProps {
  * ContinuationIndicatorコンポーネント
  * 日付をまたぐスケジュールの継続を示すインジケーター
  * 着地日のセルに表示され、元のスケジュールと視覚的に関連付けられます
+ * ドラッグ可能にして、スケジュール全体を移動できるようにします
  */
 export const ContinuationIndicator = memo(function ContinuationIndicator({
   schedule,
   segment,
+  resourceId,
   onClick,
 }: ContinuationIndicatorProps) {
+  // ドラッグ可能にする
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `continuation-${schedule.id}-${segment.date}`,
+    data: {
+      schedule,
+      sourceResourceId: resourceId,
+      sourceDate: segment.date,
+    },
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+    cursor: isDragging ? "grabbing" : "grab",
+  };
+
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onClick?.();
@@ -51,15 +72,19 @@ export const ContinuationIndicator = memo(function ContinuationIndicator({
 
   return (
     <div
+      ref={setNodeRef}
       onClick={handleClick}
-      className="absolute bg-primary/5 border border-dashed border-primary/40 rounded text-xs transition-all hover:bg-primary/10 active:bg-primary/15 overflow-hidden cursor-pointer"
+      className="absolute bg-primary/5 border border-dashed border-primary/40 rounded text-xs transition-all hover:bg-primary/10 active:bg-primary/15 overflow-hidden"
       style={{
+        ...style,
         left: position.left,
         width: position.width,
         height: '32px',
         minWidth: '40px',
       }}
       title={`${routeDisplay} (${label})`}
+      {...listeners}
+      {...attributes}
     >
       <div className="h-full px-1.5 py-1 flex items-center gap-1">
         <div className="flex items-center gap-1 w-full overflow-hidden">

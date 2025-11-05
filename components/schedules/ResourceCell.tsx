@@ -175,6 +175,7 @@ export function ResourceCell({
                   <ContinuationIndicator
                     schedule={schedule}
                     segment={segment}
+                    resourceId={resourceId}
                     onClick={() => onScheduleClick?.(schedule)}
                   />
                 </div>
