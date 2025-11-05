@@ -4,6 +4,7 @@ import type { Schedule } from "@/types/Schedule";
 import type { Client } from "@/types/Client";
 import type { Driver } from "@/types/Driver";
 import type { Vehicle } from "@/types/Vehicle";
+import type { ScheduleSegment } from "@/lib/utils/multiDayScheduleUtils";
 import { calculateScheduleLayouts, getLayoutStyle } from "@/lib/utils/scheduleLayout";
 import { LazyScheduleCard } from "./LazyScheduleCard";
 import { TimeSlotGrid } from "./TimeSlotGrid";
@@ -22,6 +23,7 @@ interface DroppableColumnProps {
   date: string;
   timeSlots: string[];
   schedules: Schedule[];
+  segments?: ScheduleSegment[];
   clientsMap: Map<string, Client>;
   driversMap: Map<string, Driver>;
   vehiclesMap: Map<string, Vehicle>;
@@ -46,6 +48,7 @@ export const DroppableColumn = memo(function DroppableColumn({
   date,
   timeSlots,
   schedules,
+  segments,
   clientsMap,
   driversMap,
   vehiclesMap,
@@ -122,40 +125,90 @@ export const DroppableColumn = memo(function DroppableColumn({
       )}
 
       {/* スケジュールカードを絶対配置（遅延レンダリング対応） */}
-      {schedules.map((schedule) => {
-        const { top, height } = calculateSchedulePosition(schedule);
-        const clientName = schedule.clientId
-          ? clientsMap.get(schedule.clientId)?.name
-          : undefined;
-        const driverName = schedule.driverId
-          ? driversMap.get(schedule.driverId)?.name
-          : undefined;
-        const vehicleName = schedule.vehicleId
-          ? vehiclesMap.get(schedule.vehicleId)?.licensePlate
-          : undefined;
-        const isConflicting = conflictIds.has(schedule.id);
-        
-        // レイアウト情報を取得（重なりを考慮した横位置）
-        const layout = scheduleLayouts.get(schedule.id);
-        const layoutStyle = layout ? getLayoutStyle(layout) : { left: '0%', width: '100%' };
+      {segments && segments.length > 0 ? (
+        // セグメント情報がある場合（日付またぎ対応）
+        segments.map((segment) => {
+          const schedule = segment.originalSchedule;
+          
+          // セグメント用の位置計算（セグメントの時刻を使用）
+          const segmentSchedule = {
+            ...schedule,
+            loadingDatetime: `${segment.date}T${segment.startTime}`,
+            deliveryDatetime: `${segment.date}T${segment.endTime}`,
+          };
+          
+          const { top, height } = calculateSchedulePosition(segmentSchedule);
+          const clientName = schedule.clientId
+            ? clientsMap.get(schedule.clientId)?.name
+            : undefined;
+          const driverName = schedule.driverId
+            ? driversMap.get(schedule.driverId)?.name
+            : undefined;
+          const vehicleName = schedule.vehicleId
+            ? vehiclesMap.get(schedule.vehicleId)?.licensePlate
+            : undefined;
+          const isConflicting = conflictIds.has(schedule.id);
+          
+          // レイアウト情報を取得（重なりを考慮した横位置）
+          const layout = scheduleLayouts.get(schedule.id);
+          const layoutStyle = layout ? getLayoutStyle(layout) : { left: '0%', width: '100%' };
 
-        return (
-          <LazyScheduleCard
-            key={schedule.id}
-            schedule={schedule}
-            clientName={clientName}
-            driverName={driverName}
-            vehicleName={vehicleName}
-            top={top}
-            height={height}
-            onClick={() => onScheduleClick?.(schedule)}
-            onKeyboardMoveStart={onKeyboardMoveStart}
-            isConflicting={isConflicting}
-            isKeyboardMoving={keyboardMovingScheduleId === schedule.id}
-            layoutStyle={layoutStyle}
-          />
-        );
-      })}
+          return (
+            <LazyScheduleCard
+              key={`${schedule.id}-${segment.date}`}
+              schedule={schedule}
+              segment={segment}
+              clientName={clientName}
+              driverName={driverName}
+              vehicleName={vehicleName}
+              top={top}
+              height={height}
+              onClick={() => onScheduleClick?.(schedule)}
+              onKeyboardMoveStart={onKeyboardMoveStart}
+              isConflicting={isConflicting}
+              isKeyboardMoving={keyboardMovingScheduleId === schedule.id}
+              isMultiDay={!segment.isStart || !segment.isEnd}
+              layoutStyle={layoutStyle}
+            />
+          );
+        })
+      ) : (
+        // セグメント情報がない場合（従来の表示）
+        schedules.map((schedule) => {
+          const { top, height } = calculateSchedulePosition(schedule);
+          const clientName = schedule.clientId
+            ? clientsMap.get(schedule.clientId)?.name
+            : undefined;
+          const driverName = schedule.driverId
+            ? driversMap.get(schedule.driverId)?.name
+            : undefined;
+          const vehicleName = schedule.vehicleId
+            ? vehiclesMap.get(schedule.vehicleId)?.licensePlate
+            : undefined;
+          const isConflicting = conflictIds.has(schedule.id);
+          
+          // レイアウト情報を取得（重なりを考慮した横位置）
+          const layout = scheduleLayouts.get(schedule.id);
+          const layoutStyle = layout ? getLayoutStyle(layout) : { left: '0%', width: '100%' };
+
+          return (
+            <LazyScheduleCard
+              key={schedule.id}
+              schedule={schedule}
+              clientName={clientName}
+              driverName={driverName}
+              vehicleName={vehicleName}
+              top={top}
+              height={height}
+              onClick={() => onScheduleClick?.(schedule)}
+              onKeyboardMoveStart={onKeyboardMoveStart}
+              isConflicting={isConflicting}
+              isKeyboardMoving={keyboardMovingScheduleId === schedule.id}
+              layoutStyle={layoutStyle}
+            />
+          );
+        })
+      )}
     </div>
   );
 });

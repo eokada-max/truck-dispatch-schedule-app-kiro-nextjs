@@ -4,8 +4,11 @@ import { memo, useEffect, useRef, useState } from "react";
 import type { Schedule } from "@/types/Schedule";
 import { DraggableScheduleCard } from "./DraggableScheduleCard";
 
+import type { ScheduleSegment } from "@/lib/utils/multiDayScheduleUtils";
+
 interface LazyScheduleCardProps {
   schedule: Schedule;
+  segment?: ScheduleSegment;
   clientName?: string;
   driverName?: string;
   vehicleName?: string;
@@ -15,6 +18,7 @@ interface LazyScheduleCardProps {
   onKeyboardMoveStart?: (schedule: Schedule) => void;
   isConflicting?: boolean;
   isKeyboardMoving?: boolean;
+  isMultiDay?: boolean;
   layoutStyle?: {
     left: string;
     width: string;
@@ -28,6 +32,7 @@ interface LazyScheduleCardProps {
  */
 export const LazyScheduleCard = memo(function LazyScheduleCard({
   schedule,
+  segment,
   clientName,
   driverName,
   vehicleName,
@@ -37,6 +42,7 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
   onKeyboardMoveStart,
   isConflicting = false,
   isKeyboardMoving = false,
+  isMultiDay = false,
   layoutStyle = { left: '0%', width: '100%' },
 }: LazyScheduleCardProps) {
   const [isVisible, setIsVisible] = useState(false);
@@ -86,7 +92,7 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
       }}
       tabIndex={0}
       role="button"
-      aria-label={`スケジュール: ${schedule.title}, ${schedule.destinationAddress}, ${schedule.startTime}から${schedule.endTime}`}
+      aria-label={`スケジュール: ${schedule.loadingLocationName || ''} → ${schedule.deliveryLocationName || ''}`}
       aria-describedby={isKeyboardMoving ? 'keyboard-move-instructions' : undefined}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !isKeyboardMoving && onKeyboardMoveStart) {
@@ -100,12 +106,14 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
       {(hasBeenVisible || isVisible) ? (
         <DraggableScheduleCard
           schedule={schedule}
+          segment={segment}
           clientName={clientName}
           driverName={driverName}
           vehicleName={vehicleName}
           onClick={onClick}
           isConflicting={isConflicting}
           isKeyboardMoving={isKeyboardMoving}
+          isMultiDay={isMultiDay}
         />
       ) : (
         // プレースホルダー: 軽量な空のdiv

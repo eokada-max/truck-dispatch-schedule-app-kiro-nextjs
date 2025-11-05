@@ -114,17 +114,17 @@ export function splitScheduleByDate(schedule: Schedule): ScheduleSegment[] {
     let endTime: string;
 
     if (isStart) {
-      // 開始日：積み地時刻から23:59:59まで
+      // 開始日：積み地時刻から24:00:00（翌日00:00:00）まで
       startTime = schedule.loadingDatetime.split('T')[1];
-      endTime = '23:59:59';
+      endTime = '24:00:00';
     } else if (isEnd) {
       // 終了日：00:00:00から着地時刻まで
       startTime = '00:00:00';
       endTime = schedule.deliveryDatetime.split('T')[1];
     } else {
-      // 中間日：00:00:00から23:59:59まで
+      // 中間日：00:00:00から24:00:00まで
       startTime = '00:00:00';
-      endTime = '23:59:59';
+      endTime = '24:00:00';
     }
 
     return {

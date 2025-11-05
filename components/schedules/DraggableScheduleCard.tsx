@@ -6,14 +6,18 @@ import { CSS } from "@dnd-kit/utilities";
 import type { Schedule } from "@/types/Schedule";
 import { ScheduleCard } from "./ScheduleCard";
 
+import type { ScheduleSegment } from "@/lib/utils/multiDayScheduleUtils";
+
 interface DraggableScheduleCardProps {
   schedule: Schedule;
+  segment?: ScheduleSegment;
   clientName?: string;
   driverName?: string;
   vehicleName?: string;
   onClick?: () => void;
   isConflicting?: boolean;
   isKeyboardMoving?: boolean;
+  isMultiDay?: boolean;
 }
 
 /**
@@ -23,12 +27,14 @@ interface DraggableScheduleCardProps {
  */
 export const DraggableScheduleCard = memo(function DraggableScheduleCard({
   schedule,
+  segment,
   clientName,
   driverName,
   vehicleName,
   onClick,
   isConflicting = false,
   isKeyboardMoving = false,
+  isMultiDay = false,
 }: DraggableScheduleCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: schedule.id,
@@ -53,12 +59,14 @@ export const DraggableScheduleCard = memo(function DraggableScheduleCard({
     >
       <ScheduleCard
         schedule={schedule}
+        segment={segment}
         clientName={clientName}
         driverName={driverName}
         vehicleName={vehicleName}
         onClick={onClick}
         isConflicting={isConflicting}
         isKeyboardMoving={isKeyboardMoving}
+        isMultiDay={isMultiDay}
       />
     </div>
   );

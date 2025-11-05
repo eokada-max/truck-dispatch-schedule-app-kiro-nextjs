@@ -1082,139 +1082,47 @@ export function TimelineCalendar({
                 ))}
               </div>
 
-              {/* 日付ごとの列のコンテナ */}
-              <div className="flex-1 relative">
-                {/* 通常のスケジュール（日付ごとの列） */}
-                <div className="flex">
-                  {dates.map((date, index) => {
-                    const dateStr = formatDate(date);
-                    // 日付をまたがないスケジュールのみ
-                    const daySchedules = (schedulesByDate.get(dateStr) || []).filter(s => !isMultiDaySchedule(s));
-                    const isLast = index === dates.length - 1;
+              {/* 日付ごとの列 */}
+              {dates.map((date, index) => {
+                const dateStr = formatDate(date);
+                // この日付に関連する全てのスケジュール（日付またぎを含む）
+                const allSchedules = schedulesByDate.get(dateStr) || [];
+                
+                // 日付またぎスケジュールのセグメントを追加
+                const segments = segmentsByDate.get(dateStr) || [];
+                const multiDaySchedules = segments.map(seg => seg.originalSchedule);
+                
+                // 重複を除去して結合
+                const uniqueSchedules = Array.from(
+                  new Map([...allSchedules, ...multiDaySchedules].map(s => [s.id, s])).values()
+                );
+                
+                const isLast = index === dates.length - 1;
 
-                    return (
-                      <DroppableColumn
-                        key={date.toISOString()}
-                        id={`date-${dateStr}`}
-                        date={dateStr}
-                        timeSlots={timeSlots}
-                        schedules={daySchedules}
-                        clientsMap={clientsMap}
-                        driversMap={driversMap}
-                        vehiclesMap={vehiclesMap}
-                        calculateSchedulePosition={calculateSchedulePosition}
-                        onScheduleClick={onScheduleClick}
-                        onKeyboardMoveStart={handleKeyboardMoveStart}
-                        onMouseDown={handleMouseDown}
-                        onTouchStart={handleTouchStart}
-                        onTouchEnd={handleTouchEnd}
-                        selectionState={selectionState}
-                        conflictIds={dragConflictIds}
-                        keyboardMovingScheduleId={keyboardMoveMode.scheduleId}
-                        isLast={isLast}
-                      />
-                    );
-                  })}
-                </div>
-
-                {/* 日付をまたぐスケジュール（絶対位置で連続表示） */}
-                {optimisticSchedules.filter(s => isMultiDaySchedule(s)).map((schedule, index) => {
-                  const loadingDate = schedule.loadingDatetime.split('T')[0];
-                  const deliveryDate = schedule.deliveryDatetime.split('T')[0];
-                  
-                  // 開始日と終了日のインデックスを取得
-                  const startDateIndex = dates.findIndex(d => formatDate(d) === loadingDate);
-                  const endDateIndex = dates.findIndex(d => formatDate(d) === deliveryDate);
-
-                  // 表示範囲外の場合はスキップ
-                  if (startDateIndex === -1 || endDateIndex === -1) {
-                    return null;
-                  }
-
-                  const COLUMN_WIDTH = 192; // w-48 = 192px
-                  const CELL_WIDTH_PERCENT = 100 / dates.length;
-
-                  // 時刻を分に変換
-                  const timeToMinutes = (time: string): number => {
-                    const [hours, minutes] = time.split(':').map(Number);
-                    return hours * 60 + minutes;
-                  };
-
-                  const loadingTime = schedule.loadingDatetime.split('T')[1];
-                  const deliveryTime = schedule.deliveryDatetime.split('T')[1];
-                  
-                  const startMinutes = timeToMinutes(loadingTime);
-                  const endMinutes = timeToMinutes(deliveryTime);
-
-                  // 開始位置：開始日のセル位置 + 開始時刻の位置
-                  const left = (startDateIndex * CELL_WIDTH_PERCENT) + (startMinutes / (24 * 60)) * CELL_WIDTH_PERCENT;
-
-                  // 幅：終了日のセル位置 + 終了時刻の位置 - 開始位置
-                  const endPosition = (endDateIndex * CELL_WIDTH_PERCENT) + (endMinutes / (24 * 60)) * CELL_WIDTH_PERCENT;
-                  const width = endPosition - left;
-
-                  // 高さ：開始時刻から終了時刻までの高さ（縦方向）
-                  const { top, height } = calculateSchedulePosition(schedule);
-
-                  const clientName = schedule.clientId ? clientsMap.get(schedule.clientId)?.name : undefined;
-                  const driverName = schedule.driverId ? driversMap.get(schedule.driverId)?.name : undefined;
-                  const vehicleName = schedule.vehicleId ? vehiclesMap.get(schedule.vehicleId)?.licensePlate : undefined;
-
-                  const routeDisplay = schedule.loadingLocationName && schedule.deliveryLocationName
-                    ? `${schedule.loadingLocationName} → ${schedule.deliveryLocationName}`
-                    : '配送';
-
-                  const startTime = loadingTime.slice(0, 5);
-                  const endTime = deliveryTime.slice(0, 5);
-
-                  return (
-                    <div
-                      key={schedule.id}
-                      onClick={() => onScheduleClick?.(schedule)}
-                      className="absolute rounded border border-dashed border-primary/60 bg-primary/10 text-xs transition-all hover:bg-primary/20 hover:shadow-md overflow-hidden cursor-pointer"
-                      style={{
-                        left: `${left}%`,
-                        width: `${width}%`,
-                        top: `${top}px`,
-                        height: `${height}px`,
-                        minHeight: '40px',
-                        zIndex: 100 + index,
-                      }}
-                      title={`日付またぎ: ${loadingDate} ${startTime} ～ ${deliveryDate} ${endTime}`}
-                    >
-                      <div className="h-full p-1.5 flex flex-col gap-0.5">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-primary flex-shrink-0" />
-                          <div className="text-xs font-semibold text-primary truncate flex-1">
-                            {routeDisplay}
-                          </div>
-                        </div>
-                        {vehicleName && (
-                          <div className="flex items-center gap-1">
-                            <Truck className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                            <div className="text-xs text-muted-foreground truncate">{vehicleName}</div>
-                          </div>
-                        )}
-                        {clientName && (
-                          <div className="flex items-center gap-1">
-                            <Building2 className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                            <div className="text-xs text-muted-foreground truncate">{clientName}</div>
-                          </div>
-                        )}
-                        {driverName && (
-                          <div className="flex items-center gap-1">
-                            <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                            <div className="text-xs text-muted-foreground truncate">{driverName}</div>
-                          </div>
-                        )}
-                        <div className="text-xs text-muted-foreground">
-                          {startTime} - {endTime}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                return (
+                  <DroppableColumn
+                    key={date.toISOString()}
+                    id={`date-${dateStr}`}
+                    date={dateStr}
+                    timeSlots={timeSlots}
+                    schedules={uniqueSchedules}
+                    segments={segments}
+                    clientsMap={clientsMap}
+                    driversMap={driversMap}
+                    vehiclesMap={vehiclesMap}
+                    calculateSchedulePosition={calculateSchedulePosition}
+                    onScheduleClick={onScheduleClick}
+                    onKeyboardMoveStart={handleKeyboardMoveStart}
+                    onMouseDown={handleMouseDown}
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                    selectionState={selectionState}
+                    conflictIds={dragConflictIds}
+                    keyboardMovingScheduleId={keyboardMoveMode.scheduleId}
+                    isLast={isLast}
+                  />
+                );
+              })}
             </div>
           </div>
         </div>
