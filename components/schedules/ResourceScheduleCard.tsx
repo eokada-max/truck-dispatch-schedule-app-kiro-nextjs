@@ -4,9 +4,11 @@ import { useDraggable } from "@dnd-kit/core";
 import type { Schedule } from "@/types/Schedule";
 import { Clock, Calendar } from "lucide-react";
 import { calculateSchedulePosition } from "@/lib/utils/timeAxisUtils";
+import type { ScheduleSegment } from "@/lib/utils/multiDayScheduleUtils";
 
 interface ResourceScheduleCardProps {
   schedule: Schedule;
+  segment?: ScheduleSegment;
   viewType: "vehicle" | "driver";
   clientName?: string;
   driverName?: string;
@@ -19,6 +21,7 @@ interface ResourceScheduleCardProps {
 
 export function ResourceScheduleCard({
   schedule,
+  segment,
   viewType,
   clientName,
   driverName,
@@ -31,10 +34,10 @@ export function ResourceScheduleCard({
   // ドラッグ可能にする
   const resourceId = viewType === "vehicle" ? schedule.vehicleId : schedule.driverId;
   
-  // loadingDatetimeから日付と時間を抽出
-  const eventDate = schedule.loadingDatetime?.split('T')[0] || '';
-  const startTime = schedule.loadingDatetime?.split('T')[1]?.slice(0, 5) || '00:00'; // HH:mm
-  const endTime = schedule.deliveryDatetime?.split('T')[1]?.slice(0, 5) || '00:00'; // HH:mm
+  // セグメント情報がある場合はそれを使用、ない場合は元のスケジュールから抽出
+  const eventDate = segment?.date || schedule.loadingDatetime?.split('T')[0] || '';
+  const startTime = segment?.startTime.slice(0, 5) || schedule.loadingDatetime?.split('T')[1]?.slice(0, 5) || '00:00'; // HH:mm
+  const endTime = segment?.endTime.slice(0, 5) || schedule.deliveryDatetime?.split('T')[1]?.slice(0, 5) || '00:00'; // HH:mm
   
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `schedule-${schedule.id}`,

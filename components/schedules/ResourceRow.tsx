@@ -8,6 +8,7 @@ import type { Client } from "@/types/Client";
 import { ResourceCell } from "./ResourceCell";
 import { Truck, User } from "lucide-react";
 import type { TimeSlot } from "@/lib/utils/timeAxisUtils";
+import { splitScheduleByDate, type ScheduleSegment } from "@/lib/utils/multiDayScheduleUtils";
 
 type Resource = Vehicle | Driver;
 
@@ -67,11 +68,13 @@ export function ResourceRow({
       <div className="grid grid-cols-7">
         {dates.map((date) => {
           const dateStr = format(date, "yyyy-MM-dd");
-          // loadingDatetimeから日付部分を抽出してフィルタリング
-          const daySchedules = schedules.filter(s => {
-            if (!s.loadingDatetime) return false;
-            const scheduleDate = s.loadingDatetime.split('T')[0];
-            return scheduleDate === dateStr;
+          
+          // 各スケジュールをセグメントに分割して、この日付に関連するものを抽出
+          const daySegments: ScheduleSegment[] = [];
+          schedules.forEach(schedule => {
+            const segments = splitScheduleByDate(schedule);
+            const relevantSegments = segments.filter(seg => seg.date === dateStr);
+            daySegments.push(...relevantSegments);
           });
 
           return (
@@ -79,7 +82,8 @@ export function ResourceRow({
               key={dateStr}
               resourceId={resource.id}
               date={dateStr}
-              schedules={daySchedules}
+              schedules={daySegments.map(seg => seg.originalSchedule)}
+              segments={daySegments}
               viewType={viewType}
               clientsMap={clientsMap}
               driversMap={driversMap}

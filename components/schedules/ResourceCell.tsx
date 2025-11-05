@@ -6,12 +6,14 @@ import type { Schedule } from "@/types/Schedule";
 import { ResourceScheduleCard } from "./ResourceScheduleCard";
 import { timeRangesOverlap } from "@/lib/utils/conflictDetection";
 import { getTimeSlotFromPosition, type TimeSlot } from "@/lib/utils/timeAxisUtils";
-import { isMultiDaySchedule } from "@/lib/utils/multiDayScheduleUtils";
+import { isMultiDaySchedule, type ScheduleSegment } from "@/lib/utils/multiDayScheduleUtils";
+import { ContinuationIndicator } from "./ContinuationIndicator";
 
 interface ResourceCellProps {
   resourceId: string;
   date: string;
   schedules: Schedule[];
+  segments?: ScheduleSegment[];
   viewType: "vehicle" | "driver";
   clientsMap: Map<string, { id: string; name: string }>;
   driversMap?: Map<string, { id: string; name: string }>;
@@ -24,6 +26,7 @@ export function ResourceCell({
   resourceId,
   date,
   schedules,
+  segments,
   viewType,
   clientsMap,
   driversMap,
@@ -123,64 +126,134 @@ export function ResourceCell({
       
       {/* スケジュールカードを時間軸上に配置（全て同じライン上） */}
       <div className="relative h-full">
-        {schedules.map((schedule, index) => {
-          const clientName = schedule.clientId
-            ? clientsMap.get(schedule.clientId)?.name
-            : undefined;
-          const driverName = schedule.driverId
-            ? driversMap?.get(schedule.driverId)?.name
-            : undefined;
-          const vehicleName = schedule.vehicleId
-            ? vehiclesMap?.get(schedule.vehicleId)?.name
-            : undefined;
+        {segments ? (
+          // セグメント情報がある場合（日付またぎ対応）
+          segments.map((segment, index) => {
+            const schedule = segment.originalSchedule;
+            const clientName = schedule.clientId
+              ? clientsMap.get(schedule.clientId)?.name
+              : undefined;
+            const driverName = schedule.driverId
+              ? driversMap?.get(schedule.driverId)?.name
+              : undefined;
+            const vehicleName = schedule.vehicleId
+              ? vehiclesMap?.get(schedule.vehicleId)?.name
+              : undefined;
 
-          // loadingDatetimeから時間を抽出
-          if (!schedule.loadingDatetime || !schedule.deliveryDatetime) return null;
-          
-          const scheduleStartTime = schedule.loadingDatetime.split('T')[1].slice(0, 5);
-          const scheduleEndTime = schedule.deliveryDatetime.split('T')[1].slice(0, 5);
-          
-          // 競合チェック：同じセル内の他のスケジュールと時間が重複しているか
-          const isConflicting = schedules.some(
-            (otherSchedule) => {
-              if (otherSchedule.id === schedule.id) return false;
-              if (!otherSchedule.loadingDatetime || !otherSchedule.deliveryDatetime) return false;
-              const otherStartTime = otherSchedule.loadingDatetime.split('T')[1].slice(0, 5);
-              const otherEndTime = otherSchedule.deliveryDatetime.split('T')[1].slice(0, 5);
-              return timeRangesOverlap(
-                scheduleStartTime,
-                scheduleEndTime,
-                otherStartTime,
-                otherEndTime
+            // 競合チェック：同じセル内の他のセグメントと時間が重複しているか
+            const isConflicting = segments.some(
+              (otherSegment) => {
+                if (otherSegment.scheduleId === segment.scheduleId) return false;
+                return timeRangesOverlap(
+                  segment.startTime,
+                  segment.endTime,
+                  otherSegment.startTime,
+                  otherSegment.endTime
+                );
+              }
+            );
+
+            // 日付またぎ判定
+            const isMultiDay = isMultiDaySchedule(schedule);
+
+            // 継続インジケーターとして表示するか、通常のカードとして表示するか
+            if (segment.isContinuation || segment.isEnd) {
+              // 継続または終了セグメント：継続インジケーターを表示
+              return (
+                <ContinuationIndicator
+                  key={`${schedule.id}-${segment.date}`}
+                  schedule={schedule}
+                  segment={segment}
+                  onClick={() => onScheduleClick?.(schedule)}
+                />
+              );
+            } else {
+              // 開始セグメント：通常のスケジュールカードを表示
+              return (
+                <ResourceScheduleCard
+                  key={`${schedule.id}-${segment.date}`}
+                  schedule={schedule}
+                  segment={segment}
+                  viewType={viewType}
+                  clientName={clientName}
+                  driverName={driverName}
+                  vehicleName={vehicleName}
+                  isConflicting={isConflicting}
+                  isMultiDay={isMultiDay}
+                  onClick={(e) => {
+                    e?.stopPropagation();
+                    onScheduleClick?.(schedule);
+                  }}
+                  style={{
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 10 + index,
+                  }}
+                />
               );
             }
-          );
+          })
+        ) : (
+          // セグメント情報がない場合（従来の表示）
+          schedules.map((schedule, index) => {
+            const clientName = schedule.clientId
+              ? clientsMap.get(schedule.clientId)?.name
+              : undefined;
+            const driverName = schedule.driverId
+              ? driversMap?.get(schedule.driverId)?.name
+              : undefined;
+            const vehicleName = schedule.vehicleId
+              ? vehiclesMap?.get(schedule.vehicleId)?.name
+              : undefined;
 
-          // 日付またぎ判定
-          const isMultiDay = isMultiDaySchedule(schedule);
+            // loadingDatetimeから時間を抽出
+            if (!schedule.loadingDatetime || !schedule.deliveryDatetime) return null;
+            
+            const scheduleStartTime = schedule.loadingDatetime.split('T')[1].slice(0, 5);
+            const scheduleEndTime = schedule.deliveryDatetime.split('T')[1].slice(0, 5);
+            
+            // 競合チェック：同じセル内の他のスケジュールと時間が重複しているか
+            const isConflicting = schedules.some(
+              (otherSchedule) => {
+                if (otherSchedule.id === schedule.id) return false;
+                if (!otherSchedule.loadingDatetime || !otherSchedule.deliveryDatetime) return false;
+                const otherStartTime = otherSchedule.loadingDatetime.split('T')[1].slice(0, 5);
+                const otherEndTime = otherSchedule.deliveryDatetime.split('T')[1].slice(0, 5);
+                return timeRangesOverlap(
+                  scheduleStartTime,
+                  scheduleEndTime,
+                  otherStartTime,
+                  otherEndTime
+                );
+              }
+            );
 
-          return (
-            <ResourceScheduleCard
-              key={schedule.id}
-              schedule={schedule}
-              viewType={viewType}
-              clientName={clientName}
-              driverName={driverName}
-              vehicleName={vehicleName}
-              isConflicting={isConflicting}
-              isMultiDay={isMultiDay}
-              onClick={(e) => {
-                e?.stopPropagation();
-                onScheduleClick?.(schedule);
-              }}
-              style={{
-                top: '50%',
-                transform: 'translateY(-50%)',
-                zIndex: 10 + index,
-              }}
-            />
-          );
-        })}
+            // 日付またぎ判定
+            const isMultiDay = isMultiDaySchedule(schedule);
+
+            return (
+              <ResourceScheduleCard
+                key={schedule.id}
+                schedule={schedule}
+                viewType={viewType}
+                clientName={clientName}
+                driverName={driverName}
+                vehicleName={vehicleName}
+                isConflicting={isConflicting}
+                isMultiDay={isMultiDay}
+                onClick={(e) => {
+                  e?.stopPropagation();
+                  onScheduleClick?.(schedule);
+                }}
+                style={{
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 10 + index,
+                }}
+              />
+            );
+          })
+        )}
       </div>
     </div>
   );
