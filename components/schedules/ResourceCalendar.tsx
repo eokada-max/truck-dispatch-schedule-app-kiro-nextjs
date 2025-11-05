@@ -22,6 +22,7 @@ import { ResourceRow } from "./ResourceRow";
 import { ResourceScheduleCard } from "./ResourceScheduleCard";
 import type { TimeSlot } from "@/lib/utils/timeAxisUtils";
 import { positionToTime, getTimeDifferenceInMinutes, addMinutesToTime } from "@/lib/utils/timeAxisUtils";
+import { isMultiDaySchedule } from "@/lib/utils/multiDayScheduleUtils";
 
 type Resource = Vehicle | Driver;
 
