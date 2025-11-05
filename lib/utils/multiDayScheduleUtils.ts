@@ -6,7 +6,10 @@
  */
 
 import type { Schedule } from "@/types/Schedule";
-import { eachDayOfInterval, parseISO, format } from "date-fns";
+import { eachDayOfInterval, parseISO, format as formatDate } from "date-fns";
+
+// format関数をエクスポート用にエイリアス
+export const format = formatDate;
 
 /**
  * スケジュールセグメント
@@ -171,5 +174,73 @@ export function calculateContinuationPosition(
   return {
     left: `${left}%`,
     width: `${width}%`,
+  };
+}
+
+/**
+ * 日付をまたぐスケジュールの連続表示用の位置を計算
+ * 複数の日付列にまたがる場合の絶対位置を計算します
+ * 
+ * @param schedule スケジュール
+ * @param dates 表示する日付のリスト
+ * @param cellWidth 各日付セルの幅（px）
+ * @returns left（開始位置px）とwidth（幅px）、表示するかどうか
+ */
+export function calculateMultiDayPosition(
+  schedule: Schedule,
+  dates: Date[],
+  cellWidth: number
+): {
+  left: number;
+  width: number;
+  shouldDisplay: boolean;
+} | null {
+  if (!schedule.loadingDatetime || !schedule.deliveryDatetime) {
+    return null;
+  }
+
+  const loadingDate = schedule.loadingDatetime.split('T')[0];
+  const deliveryDate = schedule.deliveryDatetime.split('T')[0];
+  
+  // 日付をまたがない場合はnull
+  if (loadingDate === deliveryDate) {
+    return null;
+  }
+
+  // 開始日と終了日のインデックスを取得
+  const startDateIndex = dates.findIndex(d => format(d, 'yyyy-MM-dd') === loadingDate);
+  const endDateIndex = dates.findIndex(d => format(d, 'yyyy-MM-dd') === deliveryDate);
+
+  // 表示範囲外の場合
+  if (startDateIndex === -1 || endDateIndex === -1) {
+    return { left: 0, width: 0, shouldDisplay: false };
+  }
+
+  // 時刻を分に変換
+  const timeToMinutes = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const loadingTime = schedule.loadingDatetime.split('T')[1];
+  const deliveryTime = schedule.deliveryDatetime.split('T')[1];
+  
+  const startMinutes = timeToMinutes(loadingTime);
+  const endMinutes = timeToMinutes(deliveryTime);
+
+  // 1日は1440分（24時間 * 60分）
+  const totalMinutesInDay = 24 * 60;
+
+  // 開始位置：開始日のセル位置 + 開始時刻の位置
+  const left = (startDateIndex * cellWidth) + (startMinutes / totalMinutesInDay) * cellWidth;
+
+  // 幅：終了日のセル位置 + 終了時刻の位置 - 開始位置
+  const endPosition = (endDateIndex * cellWidth) + (endMinutes / totalMinutesInDay) * cellWidth;
+  const width = endPosition - left;
+
+  return {
+    left,
+    width,
+    shouldDisplay: true,
   };
 }
