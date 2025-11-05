@@ -21,10 +21,12 @@ import { throttle } from "@/lib/utils/performanceUtils";
 import { checkConflict, type ConflictCheck } from "@/lib/utils/conflictDetection";
 import { validateScheduleUpdate } from "@/lib/utils/scheduleValidation";
 import { useUndoManager } from "@/lib/utils/undoManager";
+import { splitScheduleByDate, type ScheduleSegment } from "@/lib/utils/multiDayScheduleUtils";
 import { toast } from "sonner";
 import { ScheduleCard } from "./ScheduleCard";
 import { DroppableColumn } from "./DroppableColumn";
 import { ConflictWarningDialog } from "./ConflictWarningDialog";
+import { ContinuationIndicator } from "./ContinuationIndicator";
 import { CalendarX2 } from "lucide-react";
 
 interface TimelineCalendarProps {
@@ -281,6 +283,32 @@ export function TimelineCalendar({
         (schedule) => schedule.loadingDatetime && schedule.loadingDatetime.split('T')[0] === dateStr
       );
       grouped.set(dateStr, daySchedules);
+    });
+
+    return grouped;
+  }, [dates, optimisticSchedules]);
+
+  // 日付ごとのスケジュールセグメント（日付またぎ対応）
+  const segmentsByDate = useMemo(() => {
+    const grouped = new Map<string, ScheduleSegment[]>();
+
+    // 全日付を初期化
+    dates.forEach((date) => {
+      const dateStr = formatDate(date);
+      grouped.set(dateStr, []);
+    });
+
+    // 各スケジュールをセグメントに分割
+    optimisticSchedules.forEach((schedule) => {
+      if (!schedule.loadingDatetime || !schedule.deliveryDatetime) return;
+
+      const segments = splitScheduleByDate(schedule);
+      
+      segments.forEach((segment) => {
+        if (grouped.has(segment.date)) {
+          grouped.get(segment.date)!.push(segment);
+        }
+      });
     });
 
     return grouped;
