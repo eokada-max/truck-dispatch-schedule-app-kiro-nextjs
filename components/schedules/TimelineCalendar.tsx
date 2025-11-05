@@ -468,9 +468,21 @@ export function TimelineCalendar({
     const pixelsPerMinute = 1; // 60px / 60分
     const minutesDelta = Math.round(delta.y / pixelsPerMinute / 15) * 15; // 15分単位
 
-    // 新しい開始時間を計算
+    // 元の日時を取得
+    const loadingDate = schedule.loadingDatetime.split('T')[0];
+    const deliveryDate = schedule.deliveryDatetime.split('T')[0];
     const loadingTime = schedule.loadingDatetime.split('T')[1];
     const deliveryTime = schedule.deliveryDatetime.split('T')[1];
+    
+    // 日付またぎスケジュールかどうかを判定
+    const isMultiDay = isMultiDaySchedule(schedule);
+    
+    // 日付の変更量を計算
+    const originalDate = new Date(loadingDate);
+    const targetDate = new Date(newDate);
+    const daysDelta = Math.floor((targetDate.getTime() - originalDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // 新しい開始時間を計算
     const originalStartMinutes = timeToMinutes(loadingTime);
     const newStartMinutes = originalStartMinutes + minutesDelta;
 
@@ -481,17 +493,38 @@ export function TimelineCalendar({
     const newStartMins = clampedStartMinutes % 60;
     const newStartTime = `${String(newStartHours).padStart(2, '0')}:${String(newStartMins).padStart(2, '0')}:00`;
 
-    // 元のスケジュールの時間長を保持
-    const originalEndMinutes = timeToMinutes(deliveryTime);
-    const duration = originalEndMinutes - originalStartMinutes;
-    const newEndMinutes = clampedStartMinutes + duration;
-    const newEndHours = Math.floor(newEndMinutes / 60);
-    const newEndMins = newEndMinutes % 60;
-    const newEndTime = `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}:00`;
+    // 日付またぎスケジュールの場合、着地日時も同じ日数分シフト
+    let newDeliveryDate: string;
+    let newEndTime: string;
+    
+    if (isMultiDay) {
+      // 着地日も同じ日数分シフト
+      const originalDeliveryDate = new Date(deliveryDate);
+      const newDeliveryDateObj = new Date(originalDeliveryDate);
+      newDeliveryDateObj.setDate(newDeliveryDateObj.getDate() + daysDelta);
+      newDeliveryDate = newDeliveryDateObj.toISOString().split('T')[0];
+      
+      // 着地時刻は元の時刻を保持（時間のシフトは適用）
+      const originalEndMinutes = timeToMinutes(deliveryTime);
+      const newEndMinutes = originalEndMinutes + minutesDelta;
+      const newEndHours = Math.floor(newEndMinutes / 60);
+      const newEndMins = newEndMinutes % 60;
+      newEndTime = `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}:00`;
+    } else {
+      // 通常のスケジュールの場合、元のスケジュールの時間長を保持
+      newDeliveryDate = newDate;
+      const originalEndMinutes = timeToMinutes(deliveryTime);
+      const duration = originalEndMinutes - originalStartMinutes;
+      const newEndMinutes = clampedStartMinutes + duration;
+      const newEndHours = Math.floor(newEndMinutes / 60);
+      const newEndMins = newEndMinutes % 60;
+      newEndTime = `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}:00`;
+    }
 
     // 変更がない場合は何もしない
     const currentDate = schedule.loadingDatetime.split('T')[0];
-    if (newDate === currentDate && newStartTime === loadingTime) {
+    const currentDeliveryDate = schedule.deliveryDatetime.split('T')[0];
+    if (newDate === currentDate && newDeliveryDate === currentDeliveryDate && newStartTime === loadingTime) {
       setIsProcessing(false);
       return;
     }
@@ -508,6 +541,7 @@ export function TimelineCalendar({
     }
 
     // 競合チェック（最新のoptimisticSchedulesを使用）
+    // 日付またぎスケジュールの場合、着地日時も考慮
     const conflict = checkConflict(
       schedule,
       newDate,
@@ -523,7 +557,7 @@ export function TimelineCalendar({
         scheduleId: schedule.id,
         updates: {
           loadingDatetime: `${newDate}T${newStartTime}`,
-          deliveryDatetime: `${newDate}T${newEndTime}`,
+          deliveryDatetime: `${newDeliveryDate}T${newEndTime}`,
         },
       });
       setShowConflictDialog(true);
@@ -542,7 +576,7 @@ export function TimelineCalendar({
       },
       {
         loadingDatetime: `${newDate}T${newStartTime}`,
-        deliveryDatetime: `${newDate}T${newEndTime}`,
+        deliveryDatetime: `${newDeliveryDate}T${newEndTime}`,
       }
     );
 
@@ -550,7 +584,7 @@ export function TimelineCalendar({
     setOptimisticSchedules(prev =>
       prev.map(s =>
         s.id === schedule.id
-          ? { ...s, loadingDatetime: `${newDate}T${newStartTime}`, deliveryDatetime: `${newDate}T${newEndTime}` }
+          ? { ...s, loadingDatetime: `${newDate}T${newStartTime}`, deliveryDatetime: `${newDeliveryDate}T${newEndTime}` }
           : s
       )
     );
@@ -560,7 +594,7 @@ export function TimelineCalendar({
       try {
         await onScheduleUpdate(schedule.id, {
           loadingDatetime: `${newDate}T${newStartTime}`,
-          deliveryDatetime: `${newDate}T${newEndTime}`,
+          deliveryDatetime: `${newDeliveryDate}T${newEndTime}`,
         } as Partial<Schedule>);
 
         // 成功メッセージに「元に戻す」ボタンを表示（5秒間表示）
@@ -731,14 +765,35 @@ export function TimelineCalendar({
     const schedule = schedules.find(s => s.id === keyboardMoveMode.scheduleId);
     if (!schedule) return;
 
-    const currentDate = schedule.loadingDatetime.split('T')[0];
+    const loadingDate = schedule.loadingDatetime.split('T')[0];
+    const deliveryDate = schedule.deliveryDatetime.split('T')[0];
     const currentStartTime = schedule.loadingDatetime.split('T')[1];
-    const newDate = keyboardMoveMode.currentDate || currentDate;
+    const currentEndTime = schedule.deliveryDatetime.split('T')[1];
+    const newDate = keyboardMoveMode.currentDate || loadingDate;
     const newStartTime = keyboardMoveMode.currentStartTime || currentStartTime;
-    const newEndTime = keyboardMoveMode.currentEndTime || schedule.deliveryDatetime.split('T')[1];
+    const newEndTime = keyboardMoveMode.currentEndTime || currentEndTime;
+
+    // 日付またぎスケジュールかどうかを判定
+    const isMultiDay = isMultiDaySchedule(schedule);
+    
+    // 日付の変更量を計算
+    const originalDate = new Date(loadingDate);
+    const targetDate = new Date(newDate);
+    const daysDelta = Math.floor((targetDate.getTime() - originalDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // 日付またぎスケジュールの場合、着地日時も同じ日数分シフト
+    let newDeliveryDate: string;
+    if (isMultiDay) {
+      const originalDeliveryDate = new Date(deliveryDate);
+      const newDeliveryDateObj = new Date(originalDeliveryDate);
+      newDeliveryDateObj.setDate(newDeliveryDateObj.getDate() + daysDelta);
+      newDeliveryDate = newDeliveryDateObj.toISOString().split('T')[0];
+    } else {
+      newDeliveryDate = newDate;
+    }
 
     // 変更がない場合
-    if (newDate === currentDate && newStartTime === currentStartTime) {
+    if (newDate === loadingDate && newDeliveryDate === deliveryDate && newStartTime === currentStartTime) {
       setKeyboardMoveMode({
         isActive: false,
         scheduleId: null,
@@ -784,14 +839,14 @@ export function TimelineCalendar({
       },
       {
         loadingDatetime: `${newDate}T${newStartTime}`,
-        deliveryDatetime: `${newDate}T${newEndTime}`,
+        deliveryDatetime: `${newDeliveryDate}T${newEndTime}`,
       }
     );
 
     try {
       await onScheduleUpdate(schedule.id, {
         loadingDatetime: `${newDate}T${newStartTime}`,
-        deliveryDatetime: `${newDate}T${newEndTime}`,
+        deliveryDatetime: `${newDeliveryDate}T${newEndTime}`,
       } as Partial<Schedule>);
 
       toast.success('スケジュールを移動しました', {

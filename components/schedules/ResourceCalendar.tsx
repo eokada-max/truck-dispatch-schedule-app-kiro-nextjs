@@ -172,8 +172,27 @@ export function ResourceCalendar({
         const loadingTime = scheduleData.schedule.loadingDatetime.split('T')[1];
         const deliveryTime = scheduleData.schedule.deliveryDatetime.split('T')[1];
         
+        // 日付またぎスケジュールかどうかを判定
+        const isMultiDay = isMultiDaySchedule(scheduleData.schedule);
+        
+        // 日付の変更量を計算
+        const originalDate = new Date(oldLoadingDate);
+        const targetDate = new Date(cellData.date);
+        const daysDelta = Math.floor((targetDate.getTime() - originalDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // 日付またぎスケジュールの場合、着地日時も同じ日数分シフト
+        let newDeliveryDate: string;
+        if (isMultiDay) {
+          const originalDeliveryDate = new Date(oldDeliveryDate);
+          const newDeliveryDateObj = new Date(originalDeliveryDate);
+          newDeliveryDateObj.setDate(newDeliveryDateObj.getDate() + daysDelta);
+          newDeliveryDate = newDeliveryDateObj.toISOString().split('T')[0];
+        } else {
+          newDeliveryDate = cellData.date;
+        }
+        
         updates.loadingDatetime = `${cellData.date}T${loadingTime}`;
-        updates.deliveryDatetime = `${cellData.date}T${deliveryTime}`;
+        updates.deliveryDatetime = `${newDeliveryDate}T${deliveryTime}`;
       }
       
       // リソース変更
