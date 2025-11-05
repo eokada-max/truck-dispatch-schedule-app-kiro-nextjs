@@ -159,13 +159,25 @@ export function ResourceCell({
             // 継続インジケーターとして表示するか、通常のカードとして表示するか
             if (segment.isContinuation || segment.isEnd) {
               // 継続または終了セグメント：継続インジケーターを表示
+              // 時間軸上の位置を計算するために、ResourceScheduleCardと同じスタイルを適用
               return (
-                <ContinuationIndicator
+                <div
                   key={`${schedule.id}-${segment.date}`}
-                  schedule={schedule}
-                  segment={segment}
-                  onClick={() => onScheduleClick?.(schedule)}
-                />
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 10 + index,
+                    left: 0,
+                    right: 0,
+                  }}
+                >
+                  <ContinuationIndicator
+                    schedule={schedule}
+                    segment={segment}
+                    onClick={() => onScheduleClick?.(schedule)}
+                  />
+                </div>
               );
             } else {
               // 開始セグメント：通常のスケジュールカードを表示
