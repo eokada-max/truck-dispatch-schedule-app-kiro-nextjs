@@ -6,6 +6,7 @@ import type { Schedule } from "@/types/Schedule";
 import { ResourceScheduleCard } from "./ResourceScheduleCard";
 import { timeRangesOverlap } from "@/lib/utils/conflictDetection";
 import { getTimeSlotFromPosition, type TimeSlot } from "@/lib/utils/timeAxisUtils";
+import { isMultiDaySchedule } from "@/lib/utils/multiDayScheduleUtils";
 
 interface ResourceCellProps {
   resourceId: string;
@@ -155,6 +156,9 @@ export function ResourceCell({
             }
           );
 
+          // 日付またぎ判定
+          const isMultiDay = isMultiDaySchedule(schedule);
+
           return (
             <ResourceScheduleCard
               key={schedule.id}
@@ -164,6 +168,7 @@ export function ResourceCell({
               driverName={driverName}
               vehicleName={vehicleName}
               isConflicting={isConflicting}
+              isMultiDay={isMultiDay}
               onClick={(e) => {
                 e?.stopPropagation();
                 onScheduleClick?.(schedule);

@@ -2,7 +2,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import type { Schedule } from "@/types/Schedule";
-import { Clock } from "lucide-react";
+import { Clock, Calendar } from "lucide-react";
 import { calculateSchedulePosition } from "@/lib/utils/timeAxisUtils";
 
 interface ResourceScheduleCardProps {
@@ -12,6 +12,7 @@ interface ResourceScheduleCardProps {
   driverName?: string;
   vehicleName?: string;
   isConflicting?: boolean;
+  isMultiDay?: boolean;
   onClick?: (e?: React.MouseEvent) => void;
   style?: React.CSSProperties;
 }
@@ -23,6 +24,7 @@ export function ResourceScheduleCard({
   driverName,
   vehicleName,
   isConflicting = false,
+  isMultiDay = false,
   onClick,
   style,
 }: ResourceScheduleCardProps) {
@@ -53,6 +55,9 @@ export function ResourceScheduleCard({
   const cardWidth = parseFloat(position.width.replace('%', ''));
   const isNarrow = cardWidth < 8; // 8%未満の場合は狭いとみなす
 
+  // 日付またぎの場合は破線ボーダー
+  const borderStyle = isMultiDay ? "border-dashed" : "";
+
   return (
     <div
       ref={setNodeRef}
@@ -61,7 +66,7 @@ export function ResourceScheduleCard({
       onClick={onClick}
       data-schedule-card="true"
       suppressHydrationWarning
-      className={`absolute rounded border text-xs transition-all hover:shadow-md overflow-hidden ${
+      className={`absolute rounded border text-xs transition-all hover:shadow-md overflow-hidden ${borderStyle} ${
         isDragging
           ? "opacity-50 cursor-grabbing pointer-events-none"
           : "cursor-grab hover:cursor-grab"
@@ -77,6 +82,7 @@ export function ResourceScheduleCard({
         minWidth: '40px',
         ...style,
       }}
+      title={isMultiDay ? `日付またぎ: ${schedule.loadingDatetime.split('T')[0]} ${startTime} ～ ${schedule.deliveryDatetime.split('T')[0]} ${endTime}` : undefined}
     >
       <div className="h-full px-1.5 py-1 flex items-center gap-1">
         {isNarrow ? (
@@ -85,6 +91,7 @@ export function ResourceScheduleCard({
             <span className="font-medium text-[10px]">
               {startTime}
             </span>
+            {isMultiDay && <Calendar className="w-2 h-2 ml-0.5 text-primary" />}
             {isConflicting && <span className="text-destructive text-[10px] ml-0.5">⚠</span>}
           </div>
         ) : (
@@ -102,6 +109,11 @@ export function ResourceScheduleCard({
             <div className="font-medium text-[10px] truncate flex-1">
               {schedule.loadingLocationName || '積地'} ⇒ {schedule.deliveryLocationName || '着地'}
             </div>
+
+            {/* 日付またぎアイコン */}
+            {isMultiDay && (
+              <Calendar className="w-2.5 h-2.5 text-primary flex-shrink-0" />
+            )}
 
             {/* 競合警告 */}
             {isConflicting && (
