@@ -128,7 +128,8 @@ export function ResourceCell({
       <div className="relative h-full">
         {segments ? (
           // セグメント情報がある場合（日付またぎ対応）
-          segments.map((segment, index) => {
+          // 開始セグメント（isStart）のみを表示
+          segments.filter(seg => seg.isStart).map((segment, index) => {
             const schedule = segment.originalSchedule;
             const clientName = schedule.clientId
               ? clientsMap.get(schedule.clientId)?.name
@@ -156,43 +157,29 @@ export function ResourceCell({
             // 日付またぎ判定
             const isMultiDay = isMultiDaySchedule(schedule);
 
-            // 継続インジケーターとして表示するか、通常のカードとして表示するか
-            if (segment.isContinuation || segment.isEnd) {
-              // 継続または終了セグメント：継続インジケーターを表示
-              return (
-                <ContinuationIndicator
-                  key={`${schedule.id}-${segment.date}`}
-                  schedule={schedule}
-                  segment={segment}
-                  resourceId={resourceId}
-                  onClick={() => onScheduleClick?.(schedule)}
-                />
-              );
-            } else {
-              // 開始セグメント：通常のスケジュールカードを表示
-              return (
-                <ResourceScheduleCard
-                  key={`${schedule.id}-${segment.date}`}
-                  schedule={schedule}
-                  segment={segment}
-                  viewType={viewType}
-                  clientName={clientName}
-                  driverName={driverName}
-                  vehicleName={vehicleName}
-                  isConflicting={isConflicting}
-                  isMultiDay={isMultiDay}
-                  onClick={(e) => {
-                    e?.stopPropagation();
-                    onScheduleClick?.(schedule);
-                  }}
-                  style={{
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    zIndex: 10 + index,
-                  }}
-                />
-              );
-            }
+            // 開始セグメント：通常のスケジュールカードを表示
+            return (
+              <ResourceScheduleCard
+                key={`${schedule.id}-${segment.date}`}
+                schedule={schedule}
+                segment={segment}
+                viewType={viewType}
+                clientName={clientName}
+                driverName={driverName}
+                vehicleName={vehicleName}
+                isConflicting={isConflicting}
+                isMultiDay={isMultiDay}
+                onClick={(e) => {
+                  e?.stopPropagation();
+                  onScheduleClick?.(schedule);
+                }}
+                style={{
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 10 + index,
+                }}
+              />
+            );
           })
         ) : (
           // セグメント情報がない場合（従来の表示）
