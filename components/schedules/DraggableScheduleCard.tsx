@@ -43,10 +43,9 @@ export const DraggableScheduleCard = memo(function DraggableScheduleCard({
     },
   });
 
-  // ドラッグ中は transform を無効化し、opacity のみ変更
+  // ドラッグ中は transform を無効化
   const style = {
     transform: isDragging ? undefined : CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
     cursor: isDragging ? "grabbing" : "grab",
   };
 
@@ -56,7 +55,7 @@ export const DraggableScheduleCard = memo(function DraggableScheduleCard({
       style={style}
       {...listeners}
       {...attributes}
-      className={`relative h-full ${isConflicting ? 'animate-pulse' : ''} ${isKeyboardMoving ? 'opacity-80' : ''}`}
+      className={`relative h-full ${isConflicting ? 'animate-pulse' : ''} ${isKeyboardMoving ? 'opacity-80' : ''} ${isDragging ? 'opacity-60' : ''}`}
     >
       <ScheduleCard
         schedule={schedule}
@@ -68,6 +67,7 @@ export const DraggableScheduleCard = memo(function DraggableScheduleCard({
         isConflicting={isConflicting}
         isKeyboardMoving={isKeyboardMoving}
         isMultiDay={isMultiDay}
+        isDragging={isDragging}
       />
     </div>
   );

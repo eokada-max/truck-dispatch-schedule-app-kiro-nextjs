@@ -18,6 +18,7 @@ interface ScheduleCardProps {
   isKeyboardMoving?: boolean;
   isMultiDay?: boolean;  // 日付またぎスケジュールかどうか
   segment?: ScheduleSegment;  // スケジュールセグメント情報
+  isDragging?: boolean;  // ドラッグ中かどうか
 }
 
 /**
@@ -34,7 +35,8 @@ export const ScheduleCard = memo(function ScheduleCard({
   isConflicting = false, 
   isKeyboardMoving = false,
   isMultiDay: isMultiDayProp,
-  segment
+  segment,
+  isDragging = false
 }: ScheduleCardProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -51,6 +53,8 @@ export const ScheduleCard = memo(function ScheduleCard({
     ? `absolute bg-destructive/20 border-2 border-destructive ${borderStyle} rounded p-1.5 hover:bg-destructive/30 active:bg-destructive/40 transition-colors overflow-hidden touch-manipulation`
     : isKeyboardMoving
     ? `absolute bg-primary/30 border-2 border-primary ${borderStyle} rounded p-1.5 transition-colors overflow-hidden touch-manipulation`
+    : isDragging
+    ? `absolute bg-primary/5 border border-primary/20 ${borderStyle} rounded p-1.5 transition-colors overflow-hidden touch-manipulation`
     : `absolute bg-primary/10 border border-primary/30 ${borderStyle} rounded p-1.5 hover:bg-primary/20 active:bg-primary/30 transition-colors overflow-hidden touch-manipulation`;
   
   // 積地名 → 着地名の表示
