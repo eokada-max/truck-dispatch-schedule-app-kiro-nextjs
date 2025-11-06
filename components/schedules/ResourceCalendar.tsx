@@ -158,10 +158,9 @@ export function ResourceCalendar({
     
     const hasResourceChanged = scheduleData.sourceResourceId !== cellData.resourceId;
     const hasDateChanged = scheduleData.sourceDate !== cellData.date;
-    const hasPositionChanged = cellData.dropPosition !== undefined && cellData.dropPosition !== null;
     
-    // リソース、日付、または時間が変更された場合
-    if (hasResourceChanged || hasDateChanged || hasPositionChanged) {
+    // リソースまたは日付が変更された場合のみ処理（時間変更は無視）
+    if (hasResourceChanged || hasDateChanged) {
       const updates: Partial<Schedule> = {};
       
       // 日付変更
@@ -204,30 +203,6 @@ export function ResourceCalendar({
           // "unassigned"の場合はnullを設定、それ以外はリソースIDを設定
           updates.driverId = cellData.resourceId === "unassigned" ? null : cellData.resourceId;
         }
-      }
-      
-      // 時間変更（同じ日付・リソース内での移動）
-      if (hasPositionChanged && !hasDateChanged && !hasResourceChanged) {
-        // ドロップ位置から新しい開始時刻を計算
-        const newStartTime = positionToTime(cellData.dropPosition!);
-        
-        // 元のスケジュールの時間を抽出
-        const oldStartTime = scheduleData.schedule.loadingDatetime.split('T')[1].slice(0, 5);
-        const oldEndTime = scheduleData.schedule.deliveryDatetime.split('T')[1].slice(0, 5);
-        
-        // 元のスケジュールの長さ（分）を計算
-        const duration = getTimeDifferenceInMinutes(oldStartTime, oldEndTime);
-        
-        // 新しい終了時刻を計算
-        const newEndTime = addMinutesToTime(newStartTime, duration);
-        
-        // 日付部分を保持して時間のみ更新
-        // 日付またぎスケジュールの場合、元の日付を保持
-        const loadingDate = scheduleData.schedule.loadingDatetime.split('T')[0];
-        const deliveryDate = scheduleData.schedule.deliveryDatetime.split('T')[0];
-        
-        updates.loadingDatetime = `${loadingDate}T${newStartTime}:00`;
-        updates.deliveryDatetime = `${deliveryDate}T${newEndTime}:00`;
       }
       
       // 更新を実行
