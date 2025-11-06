@@ -68,9 +68,22 @@ export const DroppableColumn = memo(function DroppableColumn({
   });
 
   // スケジュールのレイアウトを計算（重なりを考慮）
+  // セグメント情報がある場合は、セグメントから抽出したスケジュールを使用
+  const schedulesForLayout = useMemo(() => {
+    if (segments && segments.length > 0) {
+      // セグメントから元のスケジュールを抽出（重複を除去）
+      return Array.from(
+        new Map(
+          segments.map(seg => [seg.scheduleId, seg.originalSchedule])
+        ).values()
+      );
+    }
+    return schedules;
+  }, [segments, schedules]);
+
   const scheduleLayouts = useMemo(() => {
-    return calculateScheduleLayouts(schedules);
-  }, [schedules]);
+    return calculateScheduleLayouts(schedulesForLayout);
+  }, [schedulesForLayout]);
 
   // 選択範囲の矩形を計算
   const getSelectionRect = () => {
