@@ -36,6 +36,7 @@ interface DroppableColumnProps {
   selectionState: SelectionState;
   conflictIds?: Set<string>;
   keyboardMovingScheduleId?: string | null;
+  draggingScheduleId?: string | null;
   isLast?: boolean;
 }
 
@@ -61,6 +62,7 @@ export const DroppableColumn = memo(function DroppableColumn({
   selectionState,
   conflictIds = new Set(),
   keyboardMovingScheduleId = null,
+  draggingScheduleId = null,
   isLast = false,
 }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
@@ -68,15 +70,16 @@ export const DroppableColumn = memo(function DroppableColumn({
   });
 
   // スケジュールのレイアウトを計算（重なりを考慮）
-  // セグメント情報がある場合は、セグメントから抽出したスケジュールを使用
+  // セグメント情報がある場合は、セグメントから仮想的なスケジュールを作成
   const schedulesForLayout = useMemo(() => {
     if (segments && segments.length > 0) {
-      // セグメントから元のスケジュールを抽出（重複を除去）
-      return Array.from(
-        new Map(
-          segments.map(seg => [seg.scheduleId, seg.originalSchedule])
-        ).values()
-      );
+      // セグメントごとに仮想的なスケジュールを作成
+      return segments.map(seg => ({
+        ...seg.originalSchedule,
+        id: `${seg.scheduleId}-${seg.date}`, // セグメントごとにユニークなID
+        loadingDatetime: `${seg.date}T${seg.startTime}`,
+        deliveryDatetime: `${seg.date}T${seg.endTime}`,
+      }));
     }
     return schedules;
   }, [segments, schedules]);
@@ -163,7 +166,9 @@ export const DroppableColumn = memo(function DroppableColumn({
           const isConflicting = conflictIds.has(schedule.id);
           
           // レイアウト情報を取得（重なりを考慮した横位置）
-          const layout = scheduleLayouts.get(schedule.id);
+          // セグメントのIDを使用
+          const segmentId = `${segment.scheduleId}-${segment.date}`;
+          const layout = scheduleLayouts.get(segmentId);
           const layoutStyle = layout ? getLayoutStyle(layout) : { left: '0%', width: '100%' };
 
           return (
@@ -181,6 +186,7 @@ export const DroppableColumn = memo(function DroppableColumn({
               isConflicting={isConflicting}
               isKeyboardMoving={keyboardMovingScheduleId === schedule.id}
               isMultiDay={!segment.isStart || !segment.isEnd}
+              isDragging={draggingScheduleId === schedule.id}
               layoutStyle={layoutStyle}
             />
           );
@@ -217,6 +223,7 @@ export const DroppableColumn = memo(function DroppableColumn({
               onKeyboardMoveStart={onKeyboardMoveStart}
               isConflicting={isConflicting}
               isKeyboardMoving={keyboardMovingScheduleId === schedule.id}
+              isDragging={draggingScheduleId === schedule.id}
               layoutStyle={layoutStyle}
             />
           );

@@ -19,6 +19,7 @@ interface LazyScheduleCardProps {
   isConflicting?: boolean;
   isKeyboardMoving?: boolean;
   isMultiDay?: boolean;
+  isDragging?: boolean;
   layoutStyle?: {
     left: string;
     width: string;
@@ -43,6 +44,7 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
   isConflicting = false,
   isKeyboardMoving = false,
   isMultiDay = false,
+  isDragging = false,
   layoutStyle = { left: '0%', width: '100%' },
 }: LazyScheduleCardProps) {
   const [isVisible, setIsVisible] = useState(false);
@@ -82,7 +84,7 @@ export const LazyScheduleCard = memo(function LazyScheduleCard({
   return (
     <div
       ref={containerRef}
-      className={`absolute schedule-card ${isConflicting ? 'ring-2 ring-destructive ring-offset-2 z-20' : ''} ${isKeyboardMoving ? 'ring-2 ring-primary ring-offset-2 z-20' : ''}`}
+      className={`absolute schedule-card ${isConflicting ? 'ring-2 ring-destructive ring-offset-2 z-20' : ''} ${isKeyboardMoving ? 'ring-2 ring-primary ring-offset-2 z-20' : ''} ${isDragging ? 'opacity-30' : ''}`}
       style={{
         top: `${top}px`,
         height: `${height}px`,
