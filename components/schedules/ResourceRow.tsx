@@ -6,6 +6,7 @@ import type { Driver } from "@/types/Driver";
 import type { Vehicle } from "@/types/Vehicle";
 import type { Client } from "@/types/Client";
 import { ResourceCell } from "./ResourceCell";
+import { ResourceScheduleCard } from "./ResourceScheduleCard";
 import { Truck, User, Calendar } from "lucide-react";
 import type { TimeSlot } from "@/lib/utils/timeAxisUtils";
 import { splitScheduleByDate, isMultiDaySchedule, calculateMultiDayPosition, type ScheduleSegment } from "@/lib/utils/multiDayScheduleUtils";
@@ -157,11 +158,20 @@ export function ResourceRow({
           const endTime = deliveryTime.slice(0, 5);
 
           return (
-            <div
+            <ResourceScheduleCard
               key={schedule.id}
-              onClick={() => onScheduleClick?.(schedule)}
-              className="absolute rounded border border-dashed border-primary/60 bg-primary/10 text-xs transition-all hover:bg-primary/20 hover:shadow-md overflow-hidden cursor-pointer"
+              schedule={schedule}
+              viewType={viewType}
+              clientName={clientName}
+              driverName={driverName}
+              vehicleName={vehicleName}
+              isMultiDay={true}
+              onClick={(e?: React.MouseEvent) => {
+                e?.stopPropagation();
+                onScheduleClick?.(schedule);
+              }}
               style={{
+                position: 'absolute',
                 left: `${left}%`,
                 width: `${width}%`,
                 top: '50%',
@@ -170,25 +180,7 @@ export function ResourceRow({
                 minWidth: '40px',
                 zIndex: 20 + index,
               }}
-              title={`日付またぎ: ${loadingDate} ${startTime} ～ ${deliveryDate} ${endTime}`}
-            >
-              <div className="h-full px-1.5 py-1 flex items-center gap-1">
-                <div className="flex items-center gap-1 w-full overflow-hidden">
-                  {/* カレンダーアイコン */}
-                  <Calendar className="w-2.5 h-2.5 text-primary flex-shrink-0" />
-                  
-                  {/* 積地名 → 着地名 */}
-                  <div className="font-medium text-[10px] truncate flex-1">
-                    {routeDisplay}
-                  </div>
-
-                  {/* 時間 */}
-                  <div className="text-[10px] text-muted-foreground flex-shrink-0">
-                    {startTime}-{endTime}
-                  </div>
-                </div>
-              </div>
-            </div>
+            />
           );
         })}
       </div>
