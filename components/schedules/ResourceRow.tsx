@@ -44,21 +44,9 @@ export function ResourceRow({
   // 各セルの幅を計算（7列のグリッド）
   const CELL_WIDTH_PERCENT = 100 / 7;
   
-  // 全スケジュールをセグメントに分割
-  const allSegments: ScheduleSegment[] = [];
-  schedules.forEach(schedule => {
-    const segments = splitScheduleByDate(schedule);
-    allSegments.push(...segments);
-  });
-
-  // 日付ごとにセグメントをグループ化
-  const segmentsByDate = new Map<string, ScheduleSegment[]>();
-  allSegments.forEach(segment => {
-    if (!segmentsByDate.has(segment.date)) {
-      segmentsByDate.set(segment.date, []);
-    }
-    segmentsByDate.get(segment.date)!.push(segment);
-  });
+  // 日付をまたぐスケジュールと通常のスケジュールを分離
+  const multiDaySchedules = schedules.filter(s => isMultiDaySchedule(s));
+  const singleDaySchedules = schedules.filter(s => !isMultiDaySchedule(s));
 
   return (
     <div className="grid grid-cols-[200px_1fr] border-b">
@@ -91,15 +79,12 @@ export function ResourceRow({
           {dates.map((date) => {
             const dateStr = format(date, "yyyy-MM-dd");
             
-            // この日付のセグメントを取得
-            const daySegments = segmentsByDate.get(dateStr) || [];
-            
-            // セグメントから元のスケジュールを抽出（重複を除去）
-            const daySchedules = Array.from(
-              new Map(
-                daySegments.map(seg => [seg.scheduleId, seg.originalSchedule])
-              ).values()
-            );
+            // この日付の通常スケジュール（日付をまたがないもの）のみ
+            const daySchedules = singleDaySchedules.filter(s => {
+              if (!s.loadingDatetime) return false;
+              const scheduleDate = s.loadingDatetime.split('T')[0];
+              return scheduleDate === dateStr;
+            });
 
             return (
               <ResourceCell
@@ -107,7 +92,6 @@ export function ResourceRow({
                 resourceId={resource.id}
                 date={dateStr}
                 schedules={daySchedules}
-                segments={daySegments}
                 viewType={viewType}
                 clientsMap={clientsMap}
                 driversMap={driversMap}
@@ -118,6 +102,95 @@ export function ResourceRow({
             );
           })}
         </div>
+
+        {/* 日付をまたぐスケジュール（絶対位置で連続表示） */}
+        {multiDaySchedules.map((schedule, index) => {
+          const loadingDate = schedule.loadingDatetime.split('T')[0];
+          const deliveryDate = schedule.deliveryDatetime.split('T')[0];
+          
+          // 開始日と終了日のインデックスを取得
+          const startDateIndex = dates.findIndex(d => format(d, 'yyyy-MM-dd') === loadingDate);
+          const endDateIndex = dates.findIndex(d => format(d, 'yyyy-MM-dd') === deliveryDate);
+
+          // 表示範囲外の場合はスキップ
+          if (startDateIndex === -1 || endDateIndex === -1) {
+            return null;
+          }
+
+          // 時刻を分に変換
+          const timeToMinutes = (time: string): number => {
+            const [hours, minutes] = time.split(':').map(Number);
+            return hours * 60 + minutes;
+          };
+
+          const loadingTime = schedule.loadingDatetime.split('T')[1];
+          const deliveryTime = schedule.deliveryDatetime.split('T')[1];
+          
+          const startMinutes = timeToMinutes(loadingTime);
+          const endMinutes = timeToMinutes(deliveryTime);
+
+          // 1日は1440分（24時間 * 60分）
+          const totalMinutesInDay = 24 * 60;
+
+          // 開始位置：開始日のセル位置 + 開始時刻の位置
+          const left = (startDateIndex * CELL_WIDTH_PERCENT) + (startMinutes / totalMinutesInDay) * CELL_WIDTH_PERCENT;
+
+          // 幅：終了日のセル位置 + 終了時刻の位置 - 開始位置
+          const endPosition = (endDateIndex * CELL_WIDTH_PERCENT) + (endMinutes / totalMinutesInDay) * CELL_WIDTH_PERCENT;
+          const width = endPosition - left;
+
+          const clientName = schedule.clientId
+            ? clientsMap.get(schedule.clientId)?.name
+            : undefined;
+          const driverName = schedule.driverId
+            ? driversMap?.get(schedule.driverId)?.name
+            : undefined;
+          const vehicleName = schedule.vehicleId
+            ? vehiclesMap?.get(schedule.vehicleId)?.name
+            : undefined;
+
+          const routeDisplay = schedule.loadingLocationName && schedule.deliveryLocationName
+            ? `${schedule.loadingLocationName} → ${schedule.deliveryLocationName}`
+            : '配送';
+
+          const startTime = loadingTime.slice(0, 5);
+          const endTime = deliveryTime.slice(0, 5);
+
+          return (
+            <div
+              key={schedule.id}
+              onClick={() => onScheduleClick?.(schedule)}
+              className="absolute rounded border border-dashed border-primary/60 bg-primary/10 text-xs transition-all hover:bg-primary/20 hover:shadow-md overflow-hidden cursor-pointer"
+              style={{
+                left: `${left}%`,
+                width: `${width}%`,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                height: '32px',
+                minWidth: '40px',
+                zIndex: 20 + index,
+              }}
+              title={`日付またぎ: ${loadingDate} ${startTime} ～ ${deliveryDate} ${endTime}`}
+            >
+              <div className="h-full px-1.5 py-1 flex items-center gap-1">
+                <div className="flex items-center gap-1 w-full overflow-hidden">
+                  {/* カレンダーアイコン */}
+                  <Calendar className="w-2.5 h-2.5 text-primary flex-shrink-0" />
+                  
+                  {/* 積地名 → 着地名 */}
+                  <div className="font-medium text-[10px] truncate flex-1">
+                    {routeDisplay}
+                  </div>
+
+                  {/* 時間 */}
+                  <div className="text-[10px] text-muted-foreground flex-shrink-0">
+                    {startTime}-{endTime}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
