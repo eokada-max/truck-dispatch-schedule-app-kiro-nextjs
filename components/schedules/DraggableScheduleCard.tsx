@@ -43,8 +43,9 @@ export const DraggableScheduleCard = memo(function DraggableScheduleCard({
     },
   });
 
+  // ドラッグ中は transform を無効化し、opacity のみ変更
   const style = {
-    transform: CSS.Translate.toString(transform),
+    transform: isDragging ? undefined : CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
     cursor: isDragging ? "grabbing" : "grab",
   };
